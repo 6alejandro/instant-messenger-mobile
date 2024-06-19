@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">instant-messenger-mobile</string>
+
+    <string name="hello_this_is_their_message">Hello, this is their message</string>
+    <string name="_3_20_pm">3:20 PM</string>
+    <string name="hello_this_is_your_message">Hello, this is your message</string>
+    <string name="enter_message">Enter message</string>
+
+    <string name="tab_text_1">All</string>
+    <string name="tab_text_2">Unread</string>
+    <string name="tab_text_3">Read</string>
+</resources>
