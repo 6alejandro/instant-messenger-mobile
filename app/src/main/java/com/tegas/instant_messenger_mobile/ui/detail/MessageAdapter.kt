@@ -43,6 +43,14 @@ class MessageAdapter(
             val senderName = sender?.name ?: "Unknown"
 
             if (item.senderId != nim) {
+
+                if (item.attachments != "")
+                {
+                  binding.layoutReceived.tvAttachments.visibility = View.VISIBLE
+                  binding.layoutReceived.tvAttachments.text = item.attachments.toString()
+                    binding.layoutReceived.tvAttachments.setOnClickListener {
+                    }
+                }
                 binding.layoutSent.itemSents.visibility = View.GONE
                 binding.layoutReceived.chatReceived.text = item.content
                 binding.layoutReceived.tvTime.text = formatDateTime(item.sentAt)
@@ -54,17 +62,14 @@ class MessageAdapter(
                     binding.layoutReceived.tvName.visibility = View.GONE
                 }
 
-                if (item.attachments != null && item.attachments != "null") {
-                    binding.layoutReceived.ivAttachment.visibility = View.VISIBLE
-                    Glide
-                        .with(binding.layoutReceived.ivAttachment.context)
-                        .load(item.attachments)
-                        .into(binding.layoutReceived.ivAttachment)
-                } else {
-                    binding.layoutReceived.ivAttachment.visibility = View.GONE
+            } else {
+
+                if (item.attachments != "")
+                {
+                    binding.layoutSent.tvAttachments.visibility = View.VISIBLE
+                    binding.layoutSent.tvAttachments.text = item.attachments.toString()
                 }
 
-            } else {
                 binding.layoutReceived.itemReceived.visibility = View.GONE
                 binding.layoutSent.tvName.text = senderName
                 binding.layoutSent.chatSent.text = item.content
@@ -75,16 +80,6 @@ class MessageAdapter(
                     binding.layoutSent.tvName.text = senderName
                 } else {
                     binding.layoutSent.tvName.visibility = View.GONE
-                }
-
-                if (item.attachments != null && item.attachments != "null") {
-                    binding.layoutSent.ivAttachment.visibility = View.VISIBLE
-                    Glide
-                        .with(binding.layoutSent.ivAttachment.context)
-                        .load(item.attachments)
-                        .into(binding.layoutSent.ivAttachment)
-                } else {
-                    binding.layoutSent.ivAttachment.visibility = View.GONE
                 }
             }
         }

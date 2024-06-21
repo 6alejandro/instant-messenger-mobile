@@ -22,7 +22,7 @@ import androidx.appcompat.widget.SearchView
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainSecondBinding
 
-    private lateinit var mList: MutableList<ChatsItem>
+    private var mList = mutableListOf<ChatsItem>()
 
     private val viewModel by viewModels<MainViewModel> {
         ViewModelFactory.getInstance(this)
@@ -58,32 +58,32 @@ class MainActivity : AppCompatActivity() {
 
         binding.searchView.setOnQueryTextListener(object :  SearchView.OnQueryTextListener{
             override fun onQueryTextSubmit(query: String?): Boolean {
-                return false
+                filterList(query)
+                return true
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
                 filterList(newText)
-                return true
+                return true  // Return true to indicate that the query has been handled
             }
 
         })
     }
 
     private fun filterList(query: String?) {
-        if (query != null) {
-            val filteredList = ArrayList<ChatsItem>()
-            for (i in mList) {
-                if (i.name.lowercase(Locale.ROOT).contains(query)){
-                    filteredList.add(i)
-                }
-            }
-
-            if (filteredList.isEmpty()) {
-                Toast.makeText(applicationContext, "User not found", Toast.LENGTH_SHORT).show()
-            } else {
-                adapter.setFilteredList(filteredList)
-            }
+        val filteredList = if (query.isNullOrBlank()) {
+            // Show original list when query is null or blank
+            mList.toMutableList()
+        } else {
+            // Filter list based on query
+            mList.filter { it.name.lowercase(Locale.ROOT).contains(query.lowercase(Locale.ROOT)) }.toMutableList()
         }
+
+        if (filteredList.isEmpty()) {
+            Toast.makeText(applicationContext, "User not found", Toast.LENGTH_SHORT).show()
+        }
+
+        adapter.setFilteredList(filteredList)
     }
 
     private fun getSession() {
@@ -91,12 +91,12 @@ class MainActivity : AppCompatActivity() {
             if (!user.isLogin) {
                 startActivity(Intent(this, LoginActivity::class.java))
             } else {
-                nim = user.nim
-                val name = user.name
+            nim = user.nim
+            val name = user.name
 
-                binding.tvName.text = name
-                viewModel.getChatList(nim)
-            }
+            binding.tvName.text = name
+            viewModel.getChatList(nim)
+                }
         }
     }
 

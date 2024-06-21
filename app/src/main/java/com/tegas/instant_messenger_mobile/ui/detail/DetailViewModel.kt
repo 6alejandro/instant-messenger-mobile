@@ -8,7 +8,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
-import com.google.gson.JsonObject
 import com.tegas.instant_messenger_mobile.data.ChatRepository
 import com.tegas.instant_messenger_mobile.data.Result
 import com.tegas.instant_messenger_mobile.data.UserModel
@@ -18,6 +17,8 @@ import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ParticipantDataItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.SendResponse
 import kotlinx.coroutines.launch
+import okhttp3.MultipartBody
+import java.util.Date
 
 class DetailViewModel(private val repository: ChatRepository, private val db: DbModule) :
     ViewModel() {
@@ -56,8 +57,9 @@ class DetailViewModel(private val repository: ChatRepository, private val db: Db
         return repository.getSession().asLiveData()
     }
 
-    fun sendMessage(message: JsonObject) {
-        val liveData = repository.sendMessage(message)
+    fun sendMessage(chatId: String, sederId: String, content: String, sentAt: String, attachments: MultipartBody.Part?) {
+        Log.d("TIME IN VIEWMODEL", sentAt)
+        val liveData = repository.sendMessage(chatId, sederId, content, sentAt, attachments)
         _sendMessage.addSource(liveData) { result ->
             _sendMessage.value = result
         }

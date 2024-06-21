@@ -1,13 +1,18 @@
 package com.tegas.instant_messenger_mobile.ui.detail
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.database.Cursor
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -16,15 +21,12 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.annotation.ColorRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.workDataOf
 import com.bumptech.glide.Glide
 import com.google.gson.Gson
-import com.google.gson.JsonObject
 import com.tegas.instant_messenger_mobile.R
 import com.tegas.instant_messenger_mobile.data.Result
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
@@ -33,17 +35,23 @@ import com.tegas.instant_messenger_mobile.databinding.ActivityDetailSecondBindin
 import com.tegas.instant_messenger_mobile.notification.CHANNEL_ID
 import com.tegas.instant_messenger_mobile.notification.CHANNEL_NAME
 import com.tegas.instant_messenger_mobile.notification.NOTIFICATION_ID
-import com.tegas.instant_messenger_mobile.notification.NotificationWorker
 import com.tegas.instant_messenger_mobile.ui.ViewModelFactory
 import com.tegas.instant_messenger_mobile.ui.login.LoginActivity
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 import java.net.URI
 import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import kotlin.math.log
 
 class DetailActivity : AppCompatActivity() {
 
@@ -54,11 +62,11 @@ class DetailActivity : AppCompatActivity() {
         ViewModelFactory.getInstance(this)
     }
 
-    private lateinit var chat: MessagesItem
-
-    //    private var chatId: String? = null
     private lateinit var adapter: MessageAdapter
-//    private val nim = "21106050048"
+
+    private var imageSelected: MultipartBody.Part? = null
+    private val REQUEST_CODE_PICK_IMAGE = 1
+    private val REQUEST_CODE_PERMISSION_READ_EXTERNAL_STORAGE = 100
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,12 +116,9 @@ class DetailActivity : AppCompatActivity() {
                     else -> {}
                 }
             }
-        } else {
-
         }
+
         binding.backButton.setOnClickListener {
-//            intent = Intent(this, MainActivity::class.java)
-//            startActivity(intent)
             onBackPressed()
         }
         binding.ivPhone.setOnClickListener {
@@ -152,18 +157,28 @@ class DetailActivity : AppCompatActivity() {
                 // Handle incoming messages here
                 sendNotification(applicationContext, messageData)
                 // Create a notification
-                val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                val notificationManager =
+                    getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 val notificationIntent = Intent(applicationContext, DetailActivity::class.java)
-                notificationIntent.putExtra("chatId", messageData.chatId) // Pass the chatId to the DetailActivity
+                notificationIntent.putExtra(
+                    "chatId",
+                    messageData.chatId
+                ) // Pass the chatId to the DetailActivity
 
-                val pendingIntent = PendingIntent.getActivity(applicationContext, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
+                val pendingIntent = PendingIntent.getActivity(
+                    applicationContext,
+                    0,
+                    notificationIntent,
+                    PendingIntent.FLAG_IMMUTABLE
+                )
 
-                val notification = NotificationCompat.Builder(applicationContext, "chat_notification_channel")
-                    .setContentTitle("New Chat Message")
-                    .setContentText("You received a new message from ${messageData.senderId}")
-                    .setSmallIcon(R.drawable.attachment)
-                    .setContentIntent(pendingIntent)
-                    .build()
+                val notification =
+                    NotificationCompat.Builder(applicationContext, "chat_notification_channel")
+                        .setContentTitle("New Chat Message")
+                        .setContentText("You received a new message from ${messageData.senderId}")
+                        .setSmallIcon(R.drawable.attachment)
+                        .setContentIntent(pendingIntent)
+                        .build()
 
                 notificationManager.notify(12345, notification)
 
@@ -179,8 +194,66 @@ class DetailActivity : AppCompatActivity() {
         }
 
         webSocketClient.connect()
+
+        binding.iconAttachment.setOnClickListener {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), REQUEST_CODE_PERMISSION_READ_EXTERNAL_STORAGE)
+                } else {
+                    openImagePicker()
+                }
+            }else {
+                openImagePicker()
+            }
+            val intent = Intent()
+            intent.action = Intent.ACTION_GET_CONTENT
+            intent.type = "image/*"
+            startActivityForResult(intent, 1)
+        }
+    }
+    private fun openImagePicker() {
+        val intent = Intent()
+        intent.action = Intent.ACTION_GET_CONTENT
+        intent.type = "image/*"
+        startActivityForResult(intent, 1)
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 1 && resultCode == RESULT_OK && data != null && data.data != null) {
+            val uri: Uri? = data.data
+
+            // Convert URI to file
+
+            val file = uriToFile(uri)
+            val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), file)
+            imageSelected = MultipartBody.Part.createFormData("image", file.name, requestFile)
+        }
+    }
+
+    private fun uriToFile(uri: Uri?): File {
+        val inputStream: InputStream? = contentResolver.openInputStream(uri!!)
+        val tempFile = File(cacheDir, "temp_image")
+        val outputStream = FileOutputStream(tempFile)
+        inputStream?.copyTo(outputStream)
+        inputStream?.close()
+        outputStream.close()
+        return tempFile
+    }
+
+
+    // Utility function to get the real file path from URI
+    private fun getRealPathFromURI(uri: Uri?): String {
+        var result = ""
+        val cursor = contentResolver.query(uri!!, null, null, null, null)
+        if (cursor != null) {
+            cursor.moveToFirst()
+            val idx = cursor.getColumnIndex("_data")
+            result = cursor.getString(idx)
+            cursor.close()
+        }
+        return result
+    }
 
     private fun sendNotification(context: Context, messageData: MessagesItem) {
         Log.d("SEND NOTIFICATION", "TRIGGERRED")
@@ -243,20 +316,16 @@ class DetailActivity : AppCompatActivity() {
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
                 dateFormat.timeZone = TimeZone.getTimeZone("Asia/Jakarta")
                 val currentTimeString = dateFormat.format(Date())
+                Log.d("TIME IN ACTIVITY", currentTimeString)
 
-                val jSon = JsonObject().apply {
-                    addProperty("chatId", chatId)
-                    addProperty("senderId", senderId)
-                    addProperty("content", content)
-                    addProperty("sentAt", currentTimeString)
-                    addProperty("attachment", "null")
-                }
-                viewModel.sendMessage(jSon)
+                viewModel.sendMessage(chatId, senderId, content, currentTimeString, imageSelected)
 
             }
 
         }
     }
+
+
 
     private fun setupSend() {
         viewModel.sendMessage.observe(this) {
@@ -264,6 +333,7 @@ class DetailActivity : AppCompatActivity() {
                 is Result.Error -> {
                     binding.progressBar.visibility = View.GONE
                     Toast.makeText(this, it.error, Toast.LENGTH_SHORT).show()
+                    Log.e("ERROR", it.error)
                 }
 
                 is Result.Success -> {
@@ -309,6 +379,11 @@ class DetailActivity : AppCompatActivity() {
 
 
     }
+
+    private fun showToast(message: String?) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
 }
 
 
