@@ -18,49 +18,68 @@
             android:layout_height="match_parent">
 
             <ImageView
+                android:id="@+id/iv_lines"
                 android:layout_width="25dp"
                 android:layout_height="25dp"
+                android:layout_margin="20dp"
                 android:src="@drawable/lines"
-                android:id="@+id/iv_lines"
-                app:layout_constraintBottom_toTopOf="@id/tabs"
-                app:layout_constraintStart_toStartOf="parent"
-                android:layout_margin="20dp"/>
+                app:layout_constraintBottom_toTopOf="@id/card_view"
+                app:layout_constraintStart_toStartOf="parent" />
 
             <TextView
                 android:id="@+id/tv_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                tools:text="@tools:sample/full_names"
                 app:layout_constraintBottom_toTopOf="@id/tv_logout"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"/>
+                tools:text="@tools:sample/full_names" />
+
             <TextView
                 android:id="@+id/tv_logout"
-                app:layout_constraintBottom_toTopOf="@id/tabs"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
                 android:text="Logout"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="8dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
+                app:layout_constraintBottom_toTopOf="@id/card_view"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
 
             <ImageView
                 android:id="@+id/iv_search"
                 android:layout_width="25dp"
                 android:layout_height="25dp"
                 android:layout_margin="20dp"
-                app:layout_constraintBottom_toTopOf="@id/tabs"
-                app:layout_constraintEnd_toEndOf="parent"
                 android:src="@drawable/search_line"
+                app:layout_constraintBottom_toTopOf="@id/card_view"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:tint="@color/blue" />
 
-            <com.google.android.material.tabs.TabLayout
-                android:layout_width="match_parent"
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_view"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:id="@+id/tabs"
-                app:layout_constraintBottom_toBottomOf="parent"/>
+                android:background="@color/grey_light"
+                android:elevation="8dp"
+                app:cardCornerRadius="8dp"
+                app:cardUseCompatPadding="true"
+                app:flow_horizontalBias="0.5"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent">
+
+                <androidx.appcompat.widget.SearchView
+                    android:id="@+id/search_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/search_user"
+                    app:iconifiedByDefault="false"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:queryBackground="@android:color/transparent" />
+
+            </com.google.android.material.card.MaterialCardView>
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -68,26 +87,26 @@
         android:id="@+id/rv_user"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@id/app_bar"
         app:layout_constraintBottom_toBottomOf="parent"
-        tools:listitem="@layout/item_contact"/>
+        app:layout_constraintTop_toBottomOf="@id/app_bar"
+        tools:listitem="@layout/item_contact" />
 
     <ProgressBar
         android:id="@+id/progress_bar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toTopOf="parent" />
 
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/view_pager"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintStart_toStartOf="parent"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:visibility="gone"/>
+        app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

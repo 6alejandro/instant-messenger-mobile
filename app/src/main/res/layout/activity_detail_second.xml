@@ -55,6 +55,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Default User"
+                android:id="@+id/tv_chat_type"
                 android:textColor="@color/grey"
                 android:textStyle="bold"
                 app:layout_constraintStart_toStartOf="@id/tv_name"

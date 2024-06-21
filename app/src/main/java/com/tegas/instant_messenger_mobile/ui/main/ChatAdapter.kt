@@ -11,7 +11,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 class ChatAdapter(
-    private val data: MutableList<ChatsItem> = mutableListOf(),
+    private var data: MutableList<ChatsItem> = mutableListOf(),
     private val listener: (ChatsItem) -> Unit,
 //    private val context: Context
 ) :
@@ -19,11 +19,16 @@ class ChatAdapter(
 
 //        private val userImages = context.resources.obtainTypedArray(R.array.user_images)
 
-fun setData(data: MutableList<ChatsItem>) {
-    this.data.clear()
-    this.data.addAll(data)
-    notifyDataSetChanged()
-}
+    fun setData(data: MutableList<ChatsItem>) {
+        this.data.clear()
+        this.data.addAll(data)
+        notifyDataSetChanged()
+    }
+
+    fun setFilteredList(mList: MutableList<ChatsItem>) {
+        this.data = mList
+        notifyDataSetChanged()
+    }
     inner class ChatViewHolder(private val binding: ItemContactBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(item: ChatsItem) {
@@ -53,7 +58,13 @@ fun setData(data: MutableList<ChatsItem>) {
 //    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ChatViewHolder {
-        return ChatViewHolder(ItemContactBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+        return ChatViewHolder(
+            ItemContactBinding.inflate(
+                LayoutInflater.from(parent.context),
+                parent,
+                false
+            )
+        )
     }
 
     override fun getItemCount(): Int {
@@ -61,7 +72,7 @@ fun setData(data: MutableList<ChatsItem>) {
     }
 
     override fun onBindViewHolder(holder: ChatViewHolder, position: Int) {
-        val item =data[position]
+        val item = data[position]
         holder.bind(item)
         holder.itemView.setOnClickListener {
             listener(item)

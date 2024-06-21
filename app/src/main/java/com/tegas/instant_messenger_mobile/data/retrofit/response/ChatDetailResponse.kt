@@ -1,6 +1,7 @@
 package com.tegas.instant_messenger_mobile.data.retrofit.response
 
 import android.os.Parcelable
+import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.RawValue
@@ -34,4 +35,9 @@ data class MessagesItem(
 
 	@field:SerializedName("content")
 	val content: String
-): Parcelable
+): Parcelable {
+
+	fun toJson(): String {
+		return Gson().toJson(this)
+	}
+}

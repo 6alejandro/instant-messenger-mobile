@@ -1,20 +1,13 @@
 package com.tegas.instant_messenger_mobile.ui.main
 
 import android.content.Intent
-import android.graphics.PorterDuff
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.viewpager2.widget.ViewPager2
-import com.google.android.material.tabs.TabLayout
-import com.google.android.material.tabs.TabLayoutMediator
-import com.tegas.instant_messenger_mobile.R
 import com.tegas.instant_messenger_mobile.data.Result
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
 import com.tegas.instant_messenger_mobile.databinding.ActivityMainSecondBinding
@@ -22,13 +15,20 @@ import com.tegas.instant_messenger_mobile.ui.ViewModelFactory
 import com.tegas.instant_messenger_mobile.ui.detail.DetailActivity
 import com.tegas.instant_messenger_mobile.ui.favorite.FavoriteActivity
 import com.tegas.instant_messenger_mobile.ui.login.LoginActivity
+import java.util.Locale
+import androidx.appcompat.widget.SearchView
+
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainSecondBinding
 
+    private lateinit var mList: MutableList<ChatsItem>
+
     private val viewModel by viewModels<MainViewModel> {
         ViewModelFactory.getInstance(this)
     }
+
+    private lateinit var nim: String
 
     private val adapter by lazy {
         ChatAdapter {
@@ -39,36 +39,50 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-    companion object {
-        @StringRes
-        private val TAB_TITLES = intArrayOf(
-            R.string.tab_text_1,
-            R.string.tab_text_2,
-            R.string.tab_text_3
-        )
-    }
-
-    //    private val nim = "21106050048"
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainSecondBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val nim = intent.getStringExtra("nim")
-
         getSession()
         setRecyclerView()
-//        viewModel.getChatList(nim!!)
         fetchData()
 
         setLogout()
 
-        setViewPager()
 
         binding.ivLines.setOnClickListener {
             val intent = Intent(this, FavoriteActivity::class.java)
             startActivity(intent)
+        }
+
+        binding.searchView.setOnQueryTextListener(object :  SearchView.OnQueryTextListener{
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                filterList(newText)
+                return true
+            }
+
+        })
+    }
+
+    private fun filterList(query: String?) {
+        if (query != null) {
+            val filteredList = ArrayList<ChatsItem>()
+            for (i in mList) {
+                if (i.name.lowercase(Locale.ROOT).contains(query)){
+                    filteredList.add(i)
+                }
+            }
+
+            if (filteredList.isEmpty()) {
+                Toast.makeText(applicationContext, "User not found", Toast.LENGTH_SHORT).show()
+            } else {
+                adapter.setFilteredList(filteredList)
+            }
         }
     }
 
@@ -76,13 +90,13 @@ class MainActivity : AppCompatActivity() {
         viewModel.getSession().observe(this) { user ->
             if (!user.isLogin) {
                 startActivity(Intent(this, LoginActivity::class.java))
+            } else {
+                nim = user.nim
+                val name = user.name
+
+                binding.tvName.text = name
+                viewModel.getChatList(nim)
             }
-
-            val nim = user.nim
-            val name = user.name
-
-            binding.tvName.text = name
-            viewModel.getChatList(nim)
         }
     }
 
@@ -108,7 +122,8 @@ class MainActivity : AppCompatActivity() {
                 is Result.Success -> {
                     Log.d("Result", "Success")
                     binding.progressBar.visibility = View.GONE
-                    adapter.setData(it.data as MutableList<ChatsItem>)
+                    mList = it.data as MutableList<ChatsItem>
+                    adapter.setData(mList)
                 }
             }
         }
@@ -118,41 +133,5 @@ class MainActivity : AppCompatActivity() {
         binding.tvLogout.setOnClickListener {
             viewModel.logout()
         }
-    }
-
-    private fun setViewPager() {
-        val sectionsPagerAdapter = SectionsPagerAdapter(this)
-        val viewPager: ViewPager2 = findViewById(R.id.view_pager)
-        viewPager.adapter = sectionsPagerAdapter
-        val tabs: TabLayout = findViewById(R.id.tabs)
-        TabLayoutMediator(tabs, viewPager) { tab, position ->
-            tab.text = resources.getString(TAB_TITLES[position])
-        }.attach()
-
-        tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab?) {
-                tab?.view?.background?.setColorFilter(
-                    ContextCompat.getColor(this@MainActivity, R.color.blue),
-                    PorterDuff.Mode.SRC_IN
-                )
-
-                tab?.view?.findViewById<TextView>(com.google.android.material.R.id.title)
-                    ?.setTextColor(
-                        ContextCompat.getColor(this@MainActivity, android.R.color.white)
-                    )
-            }
-
-            override fun onTabUnselected(tab: TabLayout.Tab?) {
-                // Reset background color when tab is unselected
-                tab?.view?.background?.clearColorFilter()
-                // Reset text color when tab is unselected
-                tab?.view?.findViewById<TextView>(com.google.android.material.R.id.title)
-                    ?.setTextColor(
-                        ContextCompat.getColor(this@MainActivity, R.color.black)
-                    )
-            }
-
-            override fun onTabReselected(tab: TabLayout.Tab?) {}
-        })
     }
 }

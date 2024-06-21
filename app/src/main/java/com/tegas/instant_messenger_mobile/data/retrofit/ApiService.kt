@@ -4,6 +4,7 @@ import com.google.gson.JsonObject
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatDetailResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatListResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.LoginResponse
+import com.tegas.instant_messenger_mobile.data.retrofit.response.ParticipantResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.SendResponse
 import retrofit2.Call
 import retrofit2.http.Body
@@ -46,4 +47,9 @@ interface ApiService {
     suspend fun sendMessage(
         @Body message: JsonObject
     ): SendResponse
+
+    @GET("participant")
+    suspend fun getParticipants(
+        @Query("chatId") chatId: String
+    ): ParticipantResponse
 }

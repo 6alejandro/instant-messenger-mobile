@@ -1,8 +1,12 @@
 package com.tegas.instant_messenger_mobile.ui.detail
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -12,8 +16,12 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.annotation.ColorRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.bumptech.glide.Glide
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -22,6 +30,10 @@ import com.tegas.instant_messenger_mobile.data.Result
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
 import com.tegas.instant_messenger_mobile.databinding.ActivityDetailSecondBinding
+import com.tegas.instant_messenger_mobile.notification.CHANNEL_ID
+import com.tegas.instant_messenger_mobile.notification.CHANNEL_NAME
+import com.tegas.instant_messenger_mobile.notification.NOTIFICATION_ID
+import com.tegas.instant_messenger_mobile.notification.NotificationWorker
 import com.tegas.instant_messenger_mobile.ui.ViewModelFactory
 import com.tegas.instant_messenger_mobile.ui.login.LoginActivity
 import org.java_websocket.client.WebSocketClient
@@ -31,6 +43,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import kotlin.math.log
 
 class DetailActivity : AppCompatActivity() {
 
@@ -56,6 +69,16 @@ class DetailActivity : AppCompatActivity() {
         val chatId = item?.chatId
         Log.d("CHAT ID", "CHAT ID: $chatId")
         binding.tvName.text = item?.name
+
+        when (item?.chatType) {
+            "private" -> {
+                binding.tvChatType.text = "Personal Chat"
+            }
+
+            "group" -> {
+                binding.tvChatType.text = "Group Chat"
+            }
+        }
         Glide
             .with(this)
             .load(
@@ -69,6 +92,25 @@ class DetailActivity : AppCompatActivity() {
         getSession(chatId)
         setupSend()
 
+        if (item.chatType == "group") {
+            viewModel.getParticipants(chatId)
+
+            viewModel.participants.observe(this) { result ->
+                when (result) {
+                    is Result.Success -> {
+                        adapter.setParticipants(result.data)
+                    }
+
+                    is Result.Error -> {
+                        // Handle error
+                    }
+
+                    else -> {}
+                }
+            }
+        } else {
+
+        }
         binding.backButton.setOnClickListener {
 //            intent = Intent(this, MainActivity::class.java)
 //            startActivity(intent)
@@ -89,6 +131,7 @@ class DetailActivity : AppCompatActivity() {
         viewModel.findFavorite(item?.chatId ?: "") {
             binding.ivImage.changeIconColor(R.color.darker_grey)
         }
+
         val uri = URI("ws://192.168.137.1:8181/ws") // Replace with your server IP or hostname
         webSocketClient = object : WebSocketClient(uri) {
             override fun onOpen(handshakedata: ServerHandshake?) {
@@ -107,6 +150,23 @@ class DetailActivity : AppCompatActivity() {
 
                 Log.d("ADDMESSAGEEEEEEEEEEE", "MESSAGE REFRESHED BY WEBSOCKET")
                 // Handle incoming messages here
+                sendNotification(applicationContext, messageData)
+                // Create a notification
+                val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                val notificationIntent = Intent(applicationContext, DetailActivity::class.java)
+                notificationIntent.putExtra("chatId", messageData.chatId) // Pass the chatId to the DetailActivity
+
+                val pendingIntent = PendingIntent.getActivity(applicationContext, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
+
+                val notification = NotificationCompat.Builder(applicationContext, "chat_notification_channel")
+                    .setContentTitle("New Chat Message")
+                    .setContentText("You received a new message from ${messageData.senderId}")
+                    .setSmallIcon(R.drawable.attachment)
+                    .setContentIntent(pendingIntent)
+                    .build()
+
+                notificationManager.notify(12345, notification)
+
             }
 
             override fun onClose(code: Int, reason: String?, remote: Boolean) {
@@ -119,6 +179,42 @@ class DetailActivity : AppCompatActivity() {
         }
 
         webSocketClient.connect()
+    }
+
+
+    private fun sendNotification(context: Context, messageData: MessagesItem) {
+        Log.d("SEND NOTIFICATION", "TRIGGERRED")
+        val intentNotification = Intent(context, DetailActivity::class.java).apply {
+            putExtra("chatId", messageData.chatId)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intentNotification,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val mNotificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val mBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle("New Message")
+            .setContentText(messageData.content)
+            .setSmallIcon(R.drawable.attachment)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            mBuilder.setChannelId(CHANNEL_ID)
+            mNotificationManager.createNotificationChannel(channel)
+        }
+
+        val notification = mBuilder.build()
+        mNotificationManager.notify(NOTIFICATION_ID, notification)
     }
 
     private fun getSession(chatId: String) {

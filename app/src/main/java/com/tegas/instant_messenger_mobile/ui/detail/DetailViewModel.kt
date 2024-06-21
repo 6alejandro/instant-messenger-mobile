@@ -15,6 +15,7 @@ import com.tegas.instant_messenger_mobile.data.UserModel
 import com.tegas.instant_messenger_mobile.data.local.DbModule
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
+import com.tegas.instant_messenger_mobile.data.retrofit.response.ParticipantDataItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.SendResponse
 import kotlinx.coroutines.launch
 
@@ -24,6 +25,16 @@ class DetailViewModel(private val repository: ChatRepository, private val db: Db
     private val _detailViewModel = MediatorLiveData<Result<List<MessagesItem>>>()
     val detailViewModel: LiveData<Result<List<MessagesItem>>> = _detailViewModel
 
+    private val _participants = MediatorLiveData<Result<List<ParticipantDataItem>>>()
+    val participants: LiveData<Result<List<ParticipantDataItem>>> = _participants
+
+    fun getParticipants(chatId: String) {
+        Log.d("DETAIL VIEW MODEL PARTICIPANT", "DetailViewModel Chat ID: $chatId")
+        val liveData = repository.getParticipant(chatId)
+        _participants.addSource(liveData) { result ->
+            _participants.value = result
+        }
+    }
     private val _sendMessage = MediatorLiveData<Result<SendResponse>>()
     val sendMessage: LiveData<Result<SendResponse>> = _sendMessage
 

@@ -1,11 +1,13 @@
 package com.tegas.instant_messenger_mobile.ui.detail
 
+import android.text.format.DateUtils.formatDateTime
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
+import com.tegas.instant_messenger_mobile.data.retrofit.response.ParticipantDataItem
 import com.tegas.instant_messenger_mobile.databinding.ItemChatsBinding
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -14,6 +16,13 @@ class MessageAdapter(
     private val nim: String,
     private val data: MutableList<MessagesItem> = mutableListOf(),
 ) : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
+
+    private var participants: List<ParticipantDataItem> = emptyList()
+
+    fun setParticipants(participants: List<ParticipantDataItem>) {
+        this.participants = participants
+        notifyDataSetChanged()
+    }
 
     fun setData(data: MutableList<MessagesItem>) {
         this.data.clear()
@@ -29,10 +38,21 @@ class MessageAdapter(
     inner class MessageViewHolder(private val binding: ItemChatsBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(item: MessagesItem) {
+
+            val sender = participants.find { it.userId == item.senderId }
+            val senderName = sender?.name ?: "Unknown"
+
             if (item.senderId != nim) {
                 binding.layoutSent.itemSents.visibility = View.GONE
                 binding.layoutReceived.chatReceived.text = item.content
                 binding.layoutReceived.tvTime.text = formatDateTime(item.sentAt)
+
+                if (senderName != "Unknown") {
+                    binding.layoutReceived.tvName.visibility = View.VISIBLE
+                    binding.layoutReceived.tvName.text = senderName
+                } else {
+                    binding.layoutReceived.tvName.visibility = View.GONE
+                }
 
                 if (item.attachments != null && item.attachments != "null") {
                     binding.layoutReceived.ivAttachment.visibility = View.VISIBLE
@@ -46,8 +66,16 @@ class MessageAdapter(
 
             } else {
                 binding.layoutReceived.itemReceived.visibility = View.GONE
+                binding.layoutSent.tvName.text = senderName
                 binding.layoutSent.chatSent.text = item.content
                 binding.layoutSent.tvTime.text = formatDateTime(item.sentAt)
+
+                if (senderName != "Unknown") {
+                    binding.layoutSent.tvName.visibility = View.VISIBLE
+                    binding.layoutSent.tvName.text = senderName
+                } else {
+                    binding.layoutSent.tvName.visibility = View.GONE
+                }
 
                 if (item.attachments != null && item.attachments != "null") {
                     binding.layoutSent.ivAttachment.visibility = View.VISIBLE

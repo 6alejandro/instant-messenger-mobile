@@ -9,4 +9,5 @@
     <string name="tab_text_1">All</string>
     <string name="tab_text_2">Unread</string>
     <string name="tab_text_3">Read</string>
+    <string name="search_user">Search user...</string>
 </resources>

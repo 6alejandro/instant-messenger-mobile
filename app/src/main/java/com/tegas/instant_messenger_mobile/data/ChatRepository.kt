@@ -9,6 +9,7 @@ import com.tegas.instant_messenger_mobile.data.retrofit.ApiService
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.LoginResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
+import com.tegas.instant_messenger_mobile.data.retrofit.response.ParticipantDataItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.SendResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +43,18 @@ class ChatRepository(
             }
         }
 
+    fun getParticipant(chatId: String): LiveData<Result<List<ParticipantDataItem>>> =
+        liveData(Dispatchers.IO) {
+            emit(Result.Loading)
+            try {
+                Log.d("REPOSITORY PARticipant", "REPOSITORY CHAT ID: $chatId")
+                val response = apiService.getParticipants(chatId)
+                val participants = response.participantData
+                emit(Result.Success(participants))
+            } catch (e: Exception) {
+                emit(Result.Error(e.message.toString()))
+            }
+        }
     fun login(
         nim: String,
         password: String
