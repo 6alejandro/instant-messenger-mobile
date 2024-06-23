@@ -90,10 +90,11 @@ class ChatRepository(
             }
         }
 
-    fun sendMessage(chatId: String, senderId: String, content: String, sentAt: String, attachments: MultipartBody.Part?): LiveData<Result<SendResponse>> =
+    fun sendMessage(chatId: String, senderId: String, content: String, sentAt: String, attachments: MultipartBody.Part): LiveData<Result<SendResponse>> =
         liveData(Dispatchers.IO) {
             emit(Result.Loading)
             try {
+                Log.d("SELECTED FILE IN REPOSITORY", attachments.toString())
                 Log.d("TIME IN REPOSITORY TRY", sentAt)
                 val data = mapOf(
                     "chatId" to RequestBody.create(MultipartBody.FORM, chatId),
@@ -105,6 +106,7 @@ class ChatRepository(
                 Log.d("Success", response.messages.toString())
                 emit(Result.Success(response))
             }catch (e: Exception) {
+                Log.d("SELECTED FILE IN REPOSITORY", attachments.toString())
                 Log.d("TIME IN REPOSITORY CATCH", sentAt)
                 emit(Result.Error(e.message.toString()))
             }

@@ -77,7 +77,6 @@
         android:layout_margin="8dp"
         app:layout_constraintStart_toEndOf="@id/tv_time"
         app:layout_constraintTop_toTopOf="@id/tv_time"
-        app:layout_constraintBottom_toBottomOf="@id/tv_time"
-        android:src="@drawable/clock"/>
+        app:layout_constraintBottom_toBottomOf="@id/tv_time"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

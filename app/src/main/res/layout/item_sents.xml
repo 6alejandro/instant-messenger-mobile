@@ -78,5 +78,5 @@
         app:layout_constraintEnd_toStartOf="@id/tv_time"
         app:layout_constraintTop_toTopOf="@id/tv_time"
         app:layout_constraintBottom_toBottomOf="@id/tv_time"
-        android:src="@drawable/clock"/>
+        android:src="@drawable/double_check"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

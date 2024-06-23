@@ -53,7 +53,7 @@ interface ApiService {
     @POST("messages")
     suspend fun sendMessage(
         @PartMap data: Map<String, @JvmSuppressWildcards RequestBody>,
-        @Part attachments: MultipartBody.Part?
+        @Part attachments: MultipartBody.Part
     ): SendResponse
 
     @GET("participant")

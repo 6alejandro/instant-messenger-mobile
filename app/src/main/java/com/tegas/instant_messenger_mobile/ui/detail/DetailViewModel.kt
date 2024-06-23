@@ -57,8 +57,9 @@ class DetailViewModel(private val repository: ChatRepository, private val db: Db
         return repository.getSession().asLiveData()
     }
 
-    fun sendMessage(chatId: String, sederId: String, content: String, sentAt: String, attachments: MultipartBody.Part?) {
+    fun sendMessage(chatId: String, sederId: String, content: String, sentAt: String, attachments: MultipartBody.Part) {
         Log.d("TIME IN VIEWMODEL", sentAt)
+        Log.d("SELECTED FILE IN VIEWMODEL", attachments.toString())
         val liveData = repository.sendMessage(chatId, sederId, content, sentAt, attachments)
         _sendMessage.addSource(liveData) { result ->
             _sendMessage.value = result

@@ -1,18 +1,14 @@
 package com.tegas.instant_messenger_mobile.ui.detail
 
-import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.res.ColorStateList
-import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.OpenableColumns
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -21,7 +17,6 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.annotation.ColorRes
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -37,6 +32,7 @@ import com.tegas.instant_messenger_mobile.notification.CHANNEL_NAME
 import com.tegas.instant_messenger_mobile.notification.NOTIFICATION_ID
 import com.tegas.instant_messenger_mobile.ui.ViewModelFactory
 import com.tegas.instant_messenger_mobile.ui.login.LoginActivity
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -47,13 +43,41 @@ import java.io.FileOutputStream
 import java.io.InputStream
 import java.net.URI
 import java.text.SimpleDateFormat
-import java.time.LocalDateTime
-import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
 class DetailActivity : AppCompatActivity() {
+
+    // Request code for the file picker intent
+    private val FILE_PICKER_REQUEST_CODE = 1
+
+    // Function to open the file picker intent
+    private fun openFilePicker() {
+        val intent = Intent(Intent.ACTION_GET_CONTENT)
+        intent.type = "*/*" // Accept all file types
+        intent.addCategory(Intent.CATEGORY_OPENABLE)
+        startActivityForResult(
+            Intent.createChooser(intent, "Select a file"),
+            FILE_PICKER_REQUEST_CODE
+        )
+    }
+
+    // Function to extract filename from the URI
+    private fun getFileName(filePath: String): String {
+        val uri = Uri.parse(filePath)
+        val cursor = contentResolver.query(uri, null, null, null, null)
+        return if (cursor != null && cursor.moveToFirst()) {
+            val fileName = cursor.getString(0) ?: ""
+            cursor.close()
+            fileName
+        } else {
+            "" // Handle case where cursor is null or empty
+        }
+    }
+
+    // Variable to store the selected file path (optional, can be replaced with ViewModel)
+    private var selectedFilePath: String? = null
 
     private lateinit var webSocketClient: WebSocketClient
 
@@ -64,9 +88,6 @@ class DetailActivity : AppCompatActivity() {
 
     private lateinit var adapter: MessageAdapter
 
-    private var imageSelected: MultipartBody.Part? = null
-    private val REQUEST_CODE_PICK_IMAGE = 1
-    private val REQUEST_CODE_PERMISSION_READ_EXTERNAL_STORAGE = 100
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -196,21 +217,10 @@ class DetailActivity : AppCompatActivity() {
         webSocketClient.connect()
 
         binding.iconAttachment.setOnClickListener {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), REQUEST_CODE_PERMISSION_READ_EXTERNAL_STORAGE)
-                } else {
-                    openImagePicker()
-                }
-            }else {
-                openImagePicker()
-            }
-            val intent = Intent()
-            intent.action = Intent.ACTION_GET_CONTENT
-            intent.type = "image/*"
-            startActivityForResult(intent, 1)
+            openFilePicker()
         }
     }
+
     private fun openImagePicker() {
         val intent = Intent()
         intent.action = Intent.ACTION_GET_CONTENT
@@ -218,16 +228,20 @@ class DetailActivity : AppCompatActivity() {
         startActivityForResult(intent, 1)
     }
 
+    // Function to handle the file picker result
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 1 && resultCode == RESULT_OK && data != null && data.data != null) {
-            val uri: Uri? = data.data
 
-            // Convert URI to file
+        if (requestCode == FILE_PICKER_REQUEST_CODE && resultCode == RESULT_OK) {
+            val selectedFileUri = data?.data ?: return
+            selectedFilePath = selectedFileUri.toString()
 
-            val file = uriToFile(uri)
-            val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), file)
-            imageSelected = MultipartBody.Part.createFormData("image", file.name, requestFile)
+            // Log the selected file information
+            Log.d("SELECTED_FILE", "Selected File Path: $selectedFilePath")
+
+            // You can also log additional details like filename
+            val fileName = getFileName(selectedFilePath!!)
+            Log.d("SELECTED_FILE", "Filename: $fileName")
         }
     }
 
@@ -318,13 +332,32 @@ class DetailActivity : AppCompatActivity() {
                 val currentTimeString = dateFormat.format(Date())
                 Log.d("TIME IN ACTIVITY", currentTimeString)
 
-                viewModel.sendMessage(chatId, senderId, content, currentTimeString, imageSelected)
+                val selectedFile = selectedFilePath?.let {
+                    val file = uriToFile(Uri.parse(it)) // Assuming uriToFile converts Uri to File
+                    val requestBody = RequestBody.create(
+                        "multipart/form-data".toMediaTypeOrNull(),
+                        file.readBytes()
+                    )
+                    MultipartBody.Part.createFormData("file", getFileName(it), requestBody)
+                }
 
+                if (selectedFile != null) {
+                    viewModel.sendMessage(
+                        chatId,
+                        senderId,
+                        content,
+                        currentTimeString,
+                        selectedFile
+                    )
+                } else {
+                    // Handle case where no file is selected
+                    Toast.makeText(this, "Please select a file to upload", Toast.LENGTH_SHORT)
+                        .show()
+                }
             }
-
         }
-    }
 
+    }
 
 
     private fun setupSend() {
@@ -390,3 +423,4 @@ class DetailActivity : AppCompatActivity() {
 fun ImageView.changeIconColor(@ColorRes color: Int) {
     imageTintList = ColorStateList.valueOf(ContextCompat.getColor(this.context, color))
 }
+
