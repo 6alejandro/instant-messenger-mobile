@@ -3,6 +3,7 @@ package com.tegas.instant_messenger_mobile.data.retrofit
 import com.google.gson.JsonObject
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatDetailResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatListResponse
+import com.tegas.instant_messenger_mobile.data.retrofit.response.DownloadResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.LoginResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ParticipantResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.SendResponse
@@ -62,5 +63,7 @@ interface ApiService {
     ): ParticipantResponse
 
     @GET("download")
-    suspend fun downloadFile()
+    suspend fun downloadFile(
+        @Query("path") path: String
+    ): DownloadResponse
 }

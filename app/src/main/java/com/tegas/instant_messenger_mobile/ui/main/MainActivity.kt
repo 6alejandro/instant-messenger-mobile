@@ -17,19 +17,15 @@ import com.tegas.instant_messenger_mobile.ui.favorite.FavoriteActivity
 import com.tegas.instant_messenger_mobile.ui.login.LoginActivity
 import java.util.Locale
 import androidx.appcompat.widget.SearchView
+import com.tegas.instant_messenger_mobile.databinding.ActivityMainBinding
 
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var binding: ActivityMainSecondBinding
 
-    private var mList = mutableListOf<ChatsItem>()
-
-    private val viewModel by viewModels<MainViewModel> {
-        ViewModelFactory.getInstance(this)
-    }
-
+    private lateinit var binding: ActivityMainBinding
+    private val viewModel by viewModels<MainViewModel> { ViewModelFactory.getInstance(this) }
     private lateinit var nim: String
-
+    private val mList = mutableListOf<ChatsItem>()
     private val adapter by lazy {
         ChatAdapter {
             Intent(this, DetailActivity::class.java).apply {
@@ -39,24 +35,65 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainSecondBinding.inflate(layoutInflater)
+        binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        getSession()
-        setRecyclerView()
+        observeSession()
+        setupRecyclerView()
         fetchData()
+        setupLogout()
+        setupSearch()
+    }
 
-        setLogout()
-
-
-        binding.ivLines.setOnClickListener {
-            val intent = Intent(this, FavoriteActivity::class.java)
-            startActivity(intent)
+    private fun observeSession() {
+        viewModel.getSession().observe(this) { user ->
+            if (!user.isLogin) {
+                startActivity(Intent(this, LoginActivity::class.java))
+            } else {
+                nim = user.nim
+                binding.tvName.text = user.name
+                viewModel.getChatList(nim)
+            }
         }
+    }
 
-        binding.searchView.setOnQueryTextListener(object :  SearchView.OnQueryTextListener{
+    private fun setupRecyclerView() {
+        binding.rvUser.layoutManager = LinearLayoutManager(this)
+        binding.rvUser.setHasFixedSize(true)
+        binding.rvUser.adapter = adapter
+    }
+
+    private fun fetchData() {
+        viewModel.mainViewModel.observe(this) { result ->
+            when (result) {
+                is Result.Loading -> {
+                    Log.d("Result", "Loading")
+                    binding.progressBar.visibility = View.VISIBLE
+                }
+                is Result.Error -> {
+                    Log.d("Result", "Error")
+                    binding.progressBar.visibility = View.GONE
+                }
+                is Result.Success -> {
+                    Log.d("Result", "Success")
+                    binding.progressBar.visibility = View.GONE
+                    mList.clear() // Clear existing list before update
+                    mList.addAll(result.data)
+                    adapter.setData(mList)
+                }
+            }
+        }
+    }
+
+    private fun setupLogout() {
+        binding.tvLogout.setOnClickListener { viewModel.logout() }
+    }
+
+    private fun setupSearch() {
+        binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 filterList(query)
                 return true
@@ -64,74 +101,30 @@ class MainActivity : AppCompatActivity() {
 
             override fun onQueryTextChange(newText: String?): Boolean {
                 filterList(newText)
-                return true  // Return true to indicate that the query has been handled
+                return true
             }
-
         })
     }
 
     private fun filterList(query: String?) {
-        val filteredList = if (query.isNullOrBlank()) {
-            // Show original list when query is null or blank
+        val filteredList = if (query.isNullOrEmpty()) {
             mList.toMutableList()
         } else {
-            // Filter list based on query
-            mList.filter { it.name.lowercase(Locale.ROOT).contains(query.lowercase(Locale.ROOT)) }.toMutableList()
+            mList.filter { it.name.lowercase(Locale.ROOT).contains(query.lowercase(Locale.ROOT)) }
+                .toMutableList()
         }
 
         if (filteredList.isEmpty()) {
-            Toast.makeText(applicationContext, "User not found", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "User not found", Toast.LENGTH_SHORT).show()
         }
 
         adapter.setFilteredList(filteredList)
     }
 
-    private fun getSession() {
-        viewModel.getSession().observe(this) { user ->
-            if (!user.isLogin) {
-                startActivity(Intent(this, LoginActivity::class.java))
-            } else {
-            nim = user.nim
-            val name = user.name
-
-            binding.tvName.text = name
-            viewModel.getChatList(nim)
-                }
-        }
-    }
-
-    private fun setRecyclerView() {
-        binding.rvUser.layoutManager = LinearLayoutManager(this)
-        binding.rvUser.setHasFixedSize(true)
-        binding.rvUser.adapter = adapter
-    }
-
-    private fun fetchData() {
-        viewModel.mainViewModel.observe(this) {
-            when (it) {
-                is Result.Loading -> {
-                    Log.d("Result", "Loading")
-                    binding.progressBar.visibility = View.VISIBLE
-                }
-
-                is Result.Error -> {
-                    Log.d("Result", "Error")
-                    binding.progressBar.visibility = View.GONE
-                }
-
-                is Result.Success -> {
-                    Log.d("Result", "Success")
-                    binding.progressBar.visibility = View.GONE
-                    mList = it.data as MutableList<ChatsItem>
-                    adapter.setData(mList)
-                }
-            }
-        }
-    }
-
-    private fun setLogout() {
-        binding.tvLogout.setOnClickListener {
-            viewModel.logout()
-        }
+    private fun onItemClick(item: ChatsItem) {
+        val intent = Intent(this, DetailActivity::class.java)
+        intent.putExtra("item", item)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(intent)
     }
 }

@@ -74,6 +74,7 @@
                     android:id="@+id/search_view"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_margin="8dp"
                     android:hint="@string/search_user"
                     app:iconifiedByDefault="false"
                     app:layout_constraintBottom_toBottomOf="parent"

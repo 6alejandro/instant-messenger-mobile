@@ -7,6 +7,7 @@ import com.google.gson.JsonObject
 import com.tegas.instant_messenger_mobile.data.pref.UserPreference
 import com.tegas.instant_messenger_mobile.data.retrofit.ApiService
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
+import com.tegas.instant_messenger_mobile.data.retrofit.response.DownloadResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.LoginResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ParticipantDataItem
@@ -15,6 +16,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 class ChatRepository(
     private val apiService: ApiService,
@@ -57,6 +61,31 @@ class ChatRepository(
                 emit(Result.Error(e.message.toString()))
             }
         }
+
+    fun downloadFile(path: String): LiveData<Result<DownloadResponse>> =
+        liveData(Dispatchers.IO) {
+            emit(Result.Loading)
+            try {
+                val response = apiService.downloadFile(path)
+                val message = response.message
+                Log.d("DOWNLOAD SUCCESS", message)
+                emit(Result.Success(response))
+            } catch (e: Exception) {
+                emit(Result.Error(e.message.toString()))
+            }
+        }
+
+
+    private fun writeFile(data: ByteArray, file: File) {
+        try {
+            val outputStream = FileOutputStream(file)
+            outputStream.write(data)
+            outputStream.close()
+        } catch (e: IOException) {
+            Log.e("DOWNLOAD", "Error writing file: $e")
+        }
+    }
+
     fun login(
         nim: String,
         password: String
@@ -90,7 +119,13 @@ class ChatRepository(
             }
         }
 
-    fun sendMessage(chatId: String, senderId: String, content: String, sentAt: String, attachments: MultipartBody.Part): LiveData<Result<SendResponse>> =
+    fun sendMessage(
+        chatId: String,
+        senderId: String,
+        content: String,
+        sentAt: String,
+        attachments: MultipartBody.Part
+    ): LiveData<Result<SendResponse>> =
         liveData(Dispatchers.IO) {
             emit(Result.Loading)
             try {
@@ -105,7 +140,7 @@ class ChatRepository(
                 val response = apiService.sendMessage(data, attachments)
                 Log.d("Success", response.messages.toString())
                 emit(Result.Success(response))
-            }catch (e: Exception) {
+            } catch (e: Exception) {
                 Log.d("SELECTED FILE IN REPOSITORY", attachments.toString())
                 Log.d("TIME IN REPOSITORY CATCH", sentAt)
                 emit(Result.Error(e.message.toString()))

@@ -10,4 +10,8 @@
     <string name="tab_text_2">Unread</string>
     <string name="tab_text_3">Read</string>
     <string name="search_user">Search user...</string>
+    <string name="logout">Logout</string>
+
+    <string name="open"> Open</string>
+    <string name="close"> Close</string>
 </resources>

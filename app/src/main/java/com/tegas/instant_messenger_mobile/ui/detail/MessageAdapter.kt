@@ -1,11 +1,9 @@
 package com.tegas.instant_messenger_mobile.ui.detail
 
-import android.text.format.DateUtils.formatDateTime
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ParticipantDataItem
 import com.tegas.instant_messenger_mobile.databinding.ItemChatsBinding
@@ -13,6 +11,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 class MessageAdapter(
+    private val viewModel: DetailViewModel,
     private val nim: String,
     private val data: MutableList<MessagesItem> = mutableListOf(),
 ) : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
@@ -49,6 +48,7 @@ class MessageAdapter(
                   binding.layoutReceived.tvAttachments.visibility = View.VISIBLE
                   binding.layoutReceived.tvAttachments.text = item.attachments.toString()
                     binding.layoutReceived.tvAttachments.setOnClickListener {
+                        viewModel.downloadFile(binding.layoutSent.tvAttachments.text.toString())
                     }
                 }
                 binding.layoutSent.itemSents.visibility = View.GONE
@@ -68,6 +68,9 @@ class MessageAdapter(
                 {
                     binding.layoutSent.tvAttachments.visibility = View.VISIBLE
                     binding.layoutSent.tvAttachments.text = item.attachments.toString()
+                    binding.layoutSent.tvAttachments.setOnClickListener {
+                        viewModel.downloadFile(binding.layoutSent.tvAttachments.text.toString())
+                    }
                 }
 
                 binding.layoutReceived.itemReceived.visibility = View.GONE

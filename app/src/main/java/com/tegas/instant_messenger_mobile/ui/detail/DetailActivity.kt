@@ -1,14 +1,16 @@
 package com.tegas.instant_messenger_mobile.ui.detail
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
+import android.app.DownloadManager
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -17,22 +19,22 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.annotation.ColorRes
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.NotificationCompat
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
+import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import com.tegas.instant_messenger_mobile.R
 import com.tegas.instant_messenger_mobile.data.Result
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
-import com.tegas.instant_messenger_mobile.databinding.ActivityDetailSecondBinding
-import com.tegas.instant_messenger_mobile.notification.CHANNEL_ID
-import com.tegas.instant_messenger_mobile.notification.CHANNEL_NAME
-import com.tegas.instant_messenger_mobile.notification.NOTIFICATION_ID
+import com.tegas.instant_messenger_mobile.databinding.ActivityDetailBinding
 import com.tegas.instant_messenger_mobile.ui.ViewModelFactory
 import com.tegas.instant_messenger_mobile.ui.login.LoginActivity
-import okhttp3.MediaType
+import com.tegas.instant_messenger_mobile.utils.appSettingOpen
+import com.tegas.instant_messenger_mobile.utils.isConnected
+import com.tegas.instant_messenger_mobile.utils.warningPermissionDialog
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -49,56 +51,47 @@ import java.util.TimeZone
 
 class DetailActivity : AppCompatActivity() {
 
-    // Request code for the file picker intent
     private val FILE_PICKER_REQUEST_CODE = 1
-
-    // Function to open the file picker intent
-    private fun openFilePicker() {
-        val intent = Intent(Intent.ACTION_GET_CONTENT)
-        intent.type = "*/*" // Accept all file types
-        intent.addCategory(Intent.CATEGORY_OPENABLE)
-        startActivityForResult(
-            Intent.createChooser(intent, "Select a file"),
-            FILE_PICKER_REQUEST_CODE
-        )
-    }
-
-    // Function to extract filename from the URI
-    private fun getFileName(filePath: String): String {
-        val uri = Uri.parse(filePath)
-        val cursor = contentResolver.query(uri, null, null, null, null)
-        return if (cursor != null && cursor.moveToFirst()) {
-            val fileName = cursor.getString(0) ?: ""
-            cursor.close()
-            fileName
-        } else {
-            "" // Handle case where cursor is null or empty
-        }
-    }
-
-    // Variable to store the selected file path (optional, can be replaced with ViewModel)
     private var selectedFilePath: String? = null
-
     private lateinit var webSocketClient: WebSocketClient
-
-    private lateinit var binding: ActivityDetailSecondBinding
+    private lateinit var binding: ActivityDetailBinding
+    private lateinit var adapter: MessageAdapter
+    private val multiplePermissionId = 14
     private val viewModel by viewModels<DetailViewModel> {
         ViewModelFactory.getInstance(this)
     }
-
-    private lateinit var adapter: MessageAdapter
-
-
+    private val multiplePermissionNameList = if (Build.VERSION.SDK_INT >= 33) {
+        arrayListOf()
+    } else {
+        arrayListOf(
+            android.Manifest.permission.READ_EXTERNAL_STORAGE,
+            android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+        )
+    }
+    private lateinit var snackbar: Snackbar
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityDetailSecondBinding.inflate(layoutInflater)
+        binding = ActivityDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        supportActionBar?.setDisplayHomeAsUpEnabled(false)
         val item = intent.getParcelableExtra<ChatsItem>("item")
         val chatId = item?.chatId
         Log.d("CHAT ID", "CHAT ID: $chatId")
         binding.tvName.text = item?.name
-
+        val rootView = binding.rootView
+        snackbar = Snackbar.make(
+            rootView,
+            "No Internet Connection",
+            Snackbar.LENGTH_INDEFINITE
+        ).setAction("Setting") {
+            startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+        }
+        binding.ivImage.setOnClickListener {
+            if (checkMultiplePermission()) {
+                doOperation()
+            }
+        }
         when (item?.chatType) {
             "private" -> {
                 binding.tvChatType.text = "Personal Chat"
@@ -176,32 +169,6 @@ class DetailActivity : AppCompatActivity() {
 
                 Log.d("ADDMESSAGEEEEEEEEEEE", "MESSAGE REFRESHED BY WEBSOCKET")
                 // Handle incoming messages here
-                sendNotification(applicationContext, messageData)
-                // Create a notification
-                val notificationManager =
-                    getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                val notificationIntent = Intent(applicationContext, DetailActivity::class.java)
-                notificationIntent.putExtra(
-                    "chatId",
-                    messageData.chatId
-                ) // Pass the chatId to the DetailActivity
-
-                val pendingIntent = PendingIntent.getActivity(
-                    applicationContext,
-                    0,
-                    notificationIntent,
-                    PendingIntent.FLAG_IMMUTABLE
-                )
-
-                val notification =
-                    NotificationCompat.Builder(applicationContext, "chat_notification_channel")
-                        .setContentTitle("New Chat Message")
-                        .setContentText("You received a new message from ${messageData.senderId}")
-                        .setSmallIcon(R.drawable.attachment)
-                        .setContentIntent(pendingIntent)
-                        .build()
-
-                notificationManager.notify(12345, notification)
 
             }
 
@@ -219,14 +186,32 @@ class DetailActivity : AppCompatActivity() {
         binding.iconAttachment.setOnClickListener {
             openFilePicker()
         }
+
+        viewModel.downloadResponse.observe(this) {
+            when (it) {
+                is Result.Success -> {
+                    binding.progressBar.visibility = View.GONE
+                    showToast(it.data.message)
+                    Log.d("DOWNLOAD", it.data.message)
+                }
+
+                is Result.Error -> {
+                    binding.progressBar.visibility = View.GONE
+                    Log.d("DOWNLOAD", it.error)
+                    showToast(it.error)
+                }
+
+                Result.Loading -> {
+                    binding.progressBar.visibility = View.VISIBLE
+                }
+
+                else -> {}
+            }
+
+        }
+
     }
 
-    private fun openImagePicker() {
-        val intent = Intent()
-        intent.action = Intent.ACTION_GET_CONTENT
-        intent.type = "image/*"
-        startActivityForResult(intent, 1)
-    }
 
     // Function to handle the file picker result
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -245,6 +230,123 @@ class DetailActivity : AppCompatActivity() {
         }
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == multiplePermissionId) {
+            if (grantResults.isNotEmpty()) {
+                var isGrant = true
+                for (element in grantResults) {
+                    if (element == PackageManager.PERMISSION_DENIED) {
+                        isGrant = false
+                    }
+                }
+                if (isGrant) {
+                    // here all permission granted successfully
+                    doOperation()
+                } else {
+                    var someDenied = false
+                    for (permission in permissions) {
+                        if (!ActivityCompat.shouldShowRequestPermissionRationale(
+                                this,
+                                permission
+                            )
+                        ) {
+                            if (ActivityCompat.checkSelfPermission(
+                                    this,
+                                    permission
+                                ) == PackageManager.PERMISSION_DENIED
+                            ) {
+                                someDenied = true
+                            }
+                        }
+                    }
+                    if (someDenied) {
+                        // here app Setting open because all permission is not granted
+                        // and permanent denied
+                        appSettingOpen(this)
+                    } else {
+                        // here warning permission show
+                        warningPermissionDialog(this) { _: DialogInterface, which: Int ->
+                            when (which) {
+                                DialogInterface.BUTTON_POSITIVE ->
+                                    checkMultiplePermission()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun doOperation() {
+        Toast.makeText(
+            this,
+            "All Permission Granted Successfully!",
+            Toast.LENGTH_LONG
+        ).show()
+        if (isConnected(this)) {
+            if (snackbar.isShown) {
+                snackbar.dismiss()
+            }
+            download("http://localhost:5000/download?path=assets/chat%203/alexi_laiho.jpeg")
+        } else {
+            snackbar.show()
+        }
+    }
+
+    private fun download(url: String) {
+        val folder = File(
+            Environment.getExternalStorageDirectory().toString() + "/Download/Images"
+        )
+        if (!folder.exists()) {
+            folder.mkdir()
+        }
+        showToast("DOWNLOAD STARTED")
+        val filename = url.split("/").last()
+
+        val downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+        val request = DownloadManager.Request(Uri.parse(url))
+        request.setAllowedNetworkTypes(
+            DownloadManager.Request.NETWORK_WIFI or
+                    DownloadManager.Request.NETWORK_MOBILE
+        )
+        request
+            .setTitle(filename)
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationInExternalPublicDir(
+                Environment.DIRECTORY_DOWNLOADS,
+                "Image/$filename"
+            )
+        downloadManager.enqueue(request)
+    }
+
+    private fun checkMultiplePermission(): Boolean {
+        val listPermissionNeeded = arrayListOf<String>()
+        for (permission in multiplePermissionNameList) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    permission
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                listPermissionNeeded.add(permission)
+            }
+        }
+        if (listPermissionNeeded.isNotEmpty()) {
+            ActivityCompat.requestPermissions(
+                this,
+                listPermissionNeeded.toTypedArray(),
+                multiplePermissionId
+            )
+            return false
+        }
+        return true
+    }
+
     private fun uriToFile(uri: Uri?): File {
         val inputStream: InputStream? = contentResolver.openInputStream(uri!!)
         val tempFile = File(cacheDir, "temp_image")
@@ -253,55 +355,6 @@ class DetailActivity : AppCompatActivity() {
         inputStream?.close()
         outputStream.close()
         return tempFile
-    }
-
-
-    // Utility function to get the real file path from URI
-    private fun getRealPathFromURI(uri: Uri?): String {
-        var result = ""
-        val cursor = contentResolver.query(uri!!, null, null, null, null)
-        if (cursor != null) {
-            cursor.moveToFirst()
-            val idx = cursor.getColumnIndex("_data")
-            result = cursor.getString(idx)
-            cursor.close()
-        }
-        return result
-    }
-
-    private fun sendNotification(context: Context, messageData: MessagesItem) {
-        Log.d("SEND NOTIFICATION", "TRIGGERRED")
-        val intentNotification = Intent(context, DetailActivity::class.java).apply {
-            putExtra("chatId", messageData.chatId)
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            intentNotification,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        val mNotificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val mBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("New Message")
-            .setContentText(messageData.content)
-            .setSmallIcon(R.drawable.attachment)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_HIGH
-            )
-            mBuilder.setChannelId(CHANNEL_ID)
-            mNotificationManager.createNotificationChannel(channel)
-        }
-
-        val notification = mBuilder.build()
-        mNotificationManager.notify(NOTIFICATION_ID, notification)
     }
 
     private fun getSession(chatId: String) {
@@ -314,7 +367,7 @@ class DetailActivity : AppCompatActivity() {
                 stackFromEnd = true
             }
             binding.rvChat.setHasFixedSize(true)
-            adapter = MessageAdapter(user.nim)
+            adapter = MessageAdapter(viewModel, user.nim)
             binding.rvChat.adapter = adapter
 
 
@@ -386,6 +439,18 @@ class DetailActivity : AppCompatActivity() {
         }
     }
 
+    // Function to extract filename from the URI
+    private fun getFileName(filePath: String): String {
+        val uri = Uri.parse(filePath)
+        val cursor = contentResolver.query(uri, null, null, null, null)
+        return if (cursor != null && cursor.moveToFirst()) {
+            val fileName = cursor.getString(0) ?: ""
+            cursor.close()
+            fileName
+        } else {
+            "" // Handle case where cursor is null or empty
+        }
+    }
 
     private fun fetchData() {
         viewModel.detailViewModel.observe(this) {
@@ -417,10 +482,19 @@ class DetailActivity : AppCompatActivity() {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
+    // Function to open the file picker intent
+    private fun openFilePicker() {
+        val intent = Intent(Intent.ACTION_GET_CONTENT)
+        intent.type = "*/*" // Accept all file types
+        intent.addCategory(Intent.CATEGORY_OPENABLE)
+        startActivityForResult(
+            Intent.createChooser(intent, "Select a file"),
+            FILE_PICKER_REQUEST_CODE
+        )
+    }
 }
 
 
 fun ImageView.changeIconColor(@ColorRes color: Int) {
     imageTintList = ColorStateList.valueOf(ContextCompat.getColor(this.context, color))
 }
-

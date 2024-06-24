@@ -32,6 +32,7 @@ class SplashScreen : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+        supportActionBar?.setDisplayHomeAsUpEnabled(false)
 
         Handler(Looper.getMainLooper()).postDelayed({
             getSesion()

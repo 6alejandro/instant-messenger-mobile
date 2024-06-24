@@ -13,12 +13,13 @@ import com.tegas.instant_messenger_mobile.data.Result
 import com.tegas.instant_messenger_mobile.data.UserModel
 import com.tegas.instant_messenger_mobile.data.local.DbModule
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
+import com.tegas.instant_messenger_mobile.data.retrofit.response.DownloadResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ParticipantDataItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.SendResponse
 import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
-import java.util.Date
+import java.io.File
 
 class DetailViewModel(private val repository: ChatRepository, private val db: DbModule) :
     ViewModel() {
@@ -28,6 +29,18 @@ class DetailViewModel(private val repository: ChatRepository, private val db: Db
 
     private val _participants = MediatorLiveData<Result<List<ParticipantDataItem>>>()
     val participants: LiveData<Result<List<ParticipantDataItem>>> = _participants
+
+    private val _downloadResponse = MediatorLiveData<Result<DownloadResponse>>()
+    val downloadResponse: LiveData<Result<DownloadResponse>> = _downloadResponse
+
+    fun downloadFile(path: String) {
+        Log.d("DOWNLOAD VIEWMODEL", "PATH: $path")
+        val liveData = repository.downloadFile(path)
+        _downloadResponse.addSource(liveData) { result ->
+            _downloadResponse.value = result
+        }
+    }
+
 
     fun getParticipants(chatId: String) {
         Log.d("DETAIL VIEW MODEL PARTICIPANT", "DetailViewModel Chat ID: $chatId")
