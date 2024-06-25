@@ -30,6 +30,7 @@ class MainActivity : AppCompatActivity() {
         ChatAdapter {
             Intent(this, DetailActivity::class.java).apply {
                 putExtra("item", it)
+                putExtra("chatId", it.chatId)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 startActivity(this)
             }

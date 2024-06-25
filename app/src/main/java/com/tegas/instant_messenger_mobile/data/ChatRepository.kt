@@ -124,7 +124,7 @@ class ChatRepository(
         senderId: String,
         content: String,
         sentAt: String,
-        attachments: MultipartBody.Part
+        attachments: MultipartBody.Part?
     ): LiveData<Result<SendResponse>> =
         liveData(Dispatchers.IO) {
             emit(Result.Loading)
@@ -137,7 +137,12 @@ class ChatRepository(
                     "content" to RequestBody.create(MultipartBody.FORM, content),
                     "sentAt" to RequestBody.create(MultipartBody.FORM, sentAt),
                 )
-                val response = apiService.sendMessage(data, attachments)
+                val response =
+                    if (attachments != null) {
+                        apiService.sendMessage(data, attachments)
+                    } else {
+                        apiService.sendMessage(data)
+                    }
                 Log.d("Success", response.messages.toString())
                 emit(Result.Success(response))
             } catch (e: Exception) {

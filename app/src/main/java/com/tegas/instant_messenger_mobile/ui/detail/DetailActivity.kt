@@ -1,6 +1,10 @@
 package com.tegas.instant_messenger_mobile.ui.detail
 
+import android.Manifest
 import android.app.DownloadManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
@@ -16,10 +20,12 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.ColorRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
@@ -57,6 +63,7 @@ class DetailActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDetailBinding
     private lateinit var adapter: MessageAdapter
     private val multiplePermissionId = 14
+    private var nim: String = ""
     private val viewModel by viewModels<DetailViewModel> {
         ViewModelFactory.getInstance(this)
     }
@@ -64,11 +71,21 @@ class DetailActivity : AppCompatActivity() {
         arrayListOf()
     } else {
         arrayListOf(
-            android.Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
             android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
         )
     }
     private lateinit var snackbar: Snackbar
+    private val requestPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            if (isGranted) {
+                Toast.makeText(this, "Notifications permission granted", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Notifications permission rejected", Toast.LENGTH_SHORT).show()
+            }
+        }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityDetailBinding.inflate(layoutInflater)
@@ -76,7 +93,7 @@ class DetailActivity : AppCompatActivity() {
 
         supportActionBar?.setDisplayHomeAsUpEnabled(false)
         val item = intent.getParcelableExtra<ChatsItem>("item")
-        val chatId = item?.chatId
+        val chatId = intent.getStringExtra("chatId")
         Log.d("CHAT ID", "CHAT ID: $chatId")
         binding.tvName.text = item?.name
         val rootView = binding.rootView
@@ -92,101 +109,30 @@ class DetailActivity : AppCompatActivity() {
                 doOperation()
             }
         }
-        when (item?.chatType) {
-            "private" -> {
-                binding.tvChatType.text = "Personal Chat"
-            }
-
-            "group" -> {
-                binding.tvChatType.text = "Group Chat"
-            }
-        }
-        Glide
-            .with(this)
-            .load(
-                R.drawable
-                    .daniela_villarreal
-            )
-            .into(binding.ivImage)
-
+        setRoomChat(item?.chatType)
         viewModel.getChatDetails(chatId!!)
         fetchData()
         getSession(chatId)
         setupSend()
+        setParticipantName(item?.chatType, chatId)
+        setFavoriteButton(item!!)
+        setWebSocket(chatId)
+        setAttachmentButton()
+        observeDownload()
 
-        if (item.chatType == "group") {
-            viewModel.getParticipants(chatId)
-
-            viewModel.participants.observe(this) { result ->
-                when (result) {
-                    is Result.Success -> {
-                        adapter.setParticipants(result.data)
-                    }
-
-                    is Result.Error -> {
-                        // Handle error
-                    }
-
-                    else -> {}
-                }
-            }
+        if (Build.VERSION.SDK_INT >= 33) {
+            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
 
-        binding.backButton.setOnClickListener {
-            onBackPressed()
-        }
-        binding.ivPhone.setOnClickListener {
-            viewModel.saveChat(item)
-        }
+    }
 
-        viewModel.resultFav.observe(this) {
-            binding.ivPhone.changeIconColor(R.color.darker_grey)
-        }
-
-        viewModel.resultDelFav.observe(this) {
-            binding.ivPhone.changeIconColor(R.color.blue)
-        }
-
-        viewModel.findFavorite(item?.chatId ?: "") {
-            binding.ivImage.changeIconColor(R.color.darker_grey)
-        }
-
-        val uri = URI("ws://192.168.137.1:8181/ws") // Replace with your server IP or hostname
-        webSocketClient = object : WebSocketClient(uri) {
-            override fun onOpen(handshakedata: ServerHandshake?) {
-                Log.d("WebSocket", "Connected to server")
-                // Send user ID after connection is open
-                val chatID = "{\"id\": \"$chatId\"}" // Replace with appropriate user ID
-                send(chatID)
-            }
-
-            override fun onMessage(message: String?) {
-                Log.d("WebSocket", "Received: $message")
-                val jSOnString = """$message"""
-                val gson = Gson()
-                val messageData: MessagesItem = gson.fromJson(jSOnString, MessagesItem::class.java)
-                adapter.addMessage(messageData)
-
-                Log.d("ADDMESSAGEEEEEEEEEEE", "MESSAGE REFRESHED BY WEBSOCKET")
-                // Handle incoming messages here
-
-            }
-
-            override fun onClose(code: Int, reason: String?, remote: Boolean) {
-                Log.d("WebSocket", "Connection closed")
-            }
-
-            override fun onError(ex: Exception?) {
-                Log.e("WebSocket", "Error: ${ex?.message}")
-            }
-        }
-
-        webSocketClient.connect()
-
+    private fun setAttachmentButton() {
         binding.iconAttachment.setOnClickListener {
             openFilePicker()
         }
+    }
 
+    private fun observeDownload() {
         viewModel.downloadResponse.observe(this) {
             when (it) {
                 is Result.Success -> {
@@ -209,7 +155,109 @@ class DetailActivity : AppCompatActivity() {
             }
 
         }
+    }
 
+    private fun setParticipantName(chatType: String?, chatId: String) {
+        if (chatType == "group") {
+            viewModel.getParticipants(chatId)
+
+            viewModel.participants.observe(this) { result ->
+                when (result) {
+                    is Result.Success -> {
+                        adapter.setParticipants(result.data)
+                    }
+
+                    is Result.Error -> {
+                        // Handle error
+                    }
+
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    private fun setRoomChat(chatType: String?) {
+        when (chatType) {
+            "private" -> {
+                binding.tvChatType.text = "Personal Chat"
+            }
+
+            "group" -> {
+                binding.tvChatType.text = "Group Chat"
+            }
+        }
+        Glide
+            .with(this)
+            .load(
+                R.drawable
+                    .daniela_villarreal
+            )
+            .into(binding.ivImage)
+    }
+
+    private fun setWebSocket(chatId: String) {
+        val intent = Intent(this, WebSocketService::class.java)
+        intent.putExtra("chatId", chatId)
+        intent.putExtra("nim", nim)
+        startService(intent)
+        val uri = URI("ws://192.168.137.1:8181/ws") // Replace with your server IP or hostname
+        webSocketClient = object : WebSocketClient(uri) {
+            override fun onOpen(handshakedata: ServerHandshake?) {
+                Log.d("WebSocket", "Connected to server")
+                // Send user ID after connection is open
+                val chatID = "{\"id\": \"$chatId\"}" // Replace with appropriate user ID
+                send(chatID)
+            }
+
+            override fun onMessage(message: String?) {
+                Log.d("WebSocket", "Received: $message")
+                val jSOnString = """$message"""
+                val gson = Gson()
+                val messageData: MessagesItem = gson.fromJson(jSOnString, MessagesItem::class.java)
+                adapter.addMessage(messageData)
+
+                Log.d("ADDMESSAGEEEEEEEEEEE", "MESSAGE REFRESHED BY WEBSOCKET")
+                // Handle incoming messages here
+                val sender = messageData.senderId
+                val text = messageData.content
+                val chatId = messageData.chatId
+                if (messageData.senderId != nim) {
+                    sendNotification(sender, text, chatId)
+                }
+            }
+
+            override fun onClose(code: Int, reason: String?, remote: Boolean) {
+                Log.d("WebSocket", "Connection closed")
+            }
+
+            override fun onError(ex: Exception?) {
+                Log.e("WebSocket", "Error: ${ex?.message}")
+            }
+        }
+        webSocketClient.connect()
+    }
+
+    private fun setFavoriteButton(item: ChatsItem) {
+
+        binding.backButton.setOnClickListener {
+            onBackPressed()
+        }
+        binding.ivPhone.setOnClickListener {
+            viewModel.saveChat(item)
+        }
+
+        viewModel.resultFav.observe(this) {
+            binding.ivPhone.changeIconColor(R.color.darker_grey)
+        }
+
+        viewModel.resultDelFav.observe(this) {
+            binding.ivPhone.changeIconColor(R.color.blue)
+        }
+
+        viewModel.findFavorite(item?.chatId ?: "") {
+            binding.ivImage.changeIconColor(R.color.darker_grey)
+        }
     }
 
 
@@ -228,6 +276,13 @@ class DetailActivity : AppCompatActivity() {
             val fileName = getFileName(selectedFilePath!!)
             Log.d("SELECTED_FILE", "Filename: $fileName")
         }
+        if (selectedFilePath != null) {
+            val fileName = selectedFilePath?.substringAfterLast("%2F")
+            binding.tvAttacment.visibility = View.VISIBLE
+            binding.tvAttacmentName.visibility = View.VISIBLE
+            binding.tvAttacmentName.text = fileName
+        }
+        adapter.notifyDataSetChanged()
     }
 
     override fun onRequestPermissionsResult(
@@ -367,6 +422,7 @@ class DetailActivity : AppCompatActivity() {
                 stackFromEnd = true
             }
             binding.rvChat.setHasFixedSize(true)
+            nim = user.nim
             adapter = MessageAdapter(viewModel, user.nim)
             binding.rvChat.adapter = adapter
 
@@ -394,19 +450,19 @@ class DetailActivity : AppCompatActivity() {
                     MultipartBody.Part.createFormData("file", getFileName(it), requestBody)
                 }
 
-                if (selectedFile != null) {
-                    viewModel.sendMessage(
-                        chatId,
-                        senderId,
-                        content,
-                        currentTimeString,
-                        selectedFile
-                    )
-                } else {
-                    // Handle case where no file is selected
-                    Toast.makeText(this, "Please select a file to upload", Toast.LENGTH_SHORT)
-                        .show()
-                }
+//                if (selectedFile != null) {
+                viewModel.sendMessage(
+                    chatId,
+                    senderId,
+                    content,
+                    currentTimeString,
+                    selectedFile
+                )
+//                } else {
+//                    // Handle case where no file is selected
+//                    Toast.makeText(this, "Please select a file to upload", Toast.LENGTH_SHORT)
+//                        .show()
+//                }
             }
         }
 
@@ -492,6 +548,46 @@ class DetailActivity : AppCompatActivity() {
             FILE_PICKER_REQUEST_CODE
         )
     }
+
+    private fun sendNotification(title: String, message: String, chatId: String) {
+        Log.d("Notification", "Triggered")
+        Log.d("NOTIFICATION", "ChatId: $chatId")
+        val intent = Intent(applicationContext, DetailActivity::class.java)
+        intent.putExtra("chatId", chatId)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(title)
+            .setSmallIcon(R.drawable.baseline_alarm_on_24)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setSubText(getString(R.string.notification_subtext))
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID, CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+            builder.setChannelId(CHANNEL_ID)
+            notificationManager.createNotificationChannel(channel)
+        }
+        val notification = builder.build()
+        notificationManager.notify(NOTIFICATION_ID, notification)
+    }
+
+    companion object {
+        private const val NOTIFICATION_ID = 1
+        private const val CHANNEL_ID = "channel_01"
+        private const val CHANNEL_NAME = "dicoding channel"
+    }
+
 }
 
 
