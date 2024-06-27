@@ -1,9 +1,12 @@
 package com.tegas.instant_messenger_mobile.ui.detail
 
+import android.content.Intent
+import android.net.Uri
 import android.text.format.DateUtils.formatDateTime
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat.startActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.tegas.instant_messenger_mobile.R
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
@@ -41,18 +44,14 @@ class MessageAdapter(
                   binding.layoutReceived.tvAttachments.text = item.attachments.toString()
 
                     binding.layoutReceived.tvAttachments.setOnClickListener {
-                        viewModel.downloadFile(binding.layoutSent.tvAttachments.text.toString())
+                        val url = "http://192.168.137.1:5000/download?path=" + item.attachments.toString()
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        binding.root.context.startActivity(intent)
                     }
                 }
                 binding.layoutSent.itemSents.visibility = View.GONE
                 binding.layoutReceived.chatReceived.text = item.content
                 binding.layoutReceived.tvTime.text = formatDateTime(item.sentAt)
-//                if (chatType == "group") {
-//                    binding.layoutReceived.tvName.visibility = View.VISIBLE
-//                    binding.layoutReceived.tvName.text = item.senderName
-//                } else {
-//                    binding.layoutReceived.tvName.visibility = View.GONE
-//                }
             } else {
 
                 if (item.attachments != "")
@@ -60,7 +59,9 @@ class MessageAdapter(
                     binding.layoutSent.tvAttachments.visibility = View.VISIBLE
                     binding.layoutSent.tvAttachments.text = item.attachments.toString()
                     binding.layoutSent.tvAttachments.setOnClickListener {
-                        viewModel.downloadFile(binding.layoutSent.tvAttachments.text.toString())
+                        val url = "http://192.168.137.1:5000/" + item.attachments.toString()
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        binding.root.context.startActivity(intent)
                     }
                 }
 

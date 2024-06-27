@@ -6,6 +6,7 @@ import androidx.lifecycle.liveData
 import com.google.gson.JsonObject
 import com.tegas.instant_messenger_mobile.data.pref.UserPreference
 import com.tegas.instant_messenger_mobile.data.retrofit.ApiService
+import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatDetailResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.DownloadResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.LoginResponse
@@ -36,14 +37,14 @@ class ChatRepository(
             }
         }
 
-    fun getChatDetails(chatId: String, userId: String): LiveData<Result<List<MessagesItem>>> =
+    fun getChatDetails(chatId: String, userId: String): LiveData<Result<ChatDetailResponse>> =
         liveData(Dispatchers.IO) {
             emit(Result.Loading)
             try {
                 Log.d("REPOSITORY", "REPOSITORY CHAT ID: $chatId")
                 val response = apiService.getChatDetails(chatId, userId)
-                val messages = response.messages
-                emit(Result.Success(messages))
+                val item = response
+                emit(Result.Success(item))
             } catch (e: Exception) {
                 emit(Result.Error(e.message.toString()))
             }
@@ -68,10 +69,11 @@ class ChatRepository(
             try {
                 val response = apiService.downloadFile(path)
                 val message = response.message
-                Log.d("DOWNLOAD SUCCESS", message)
+                Log.d("DOWNLOAD MESSAGE", message)
                 emit(Result.Success(response))
             } catch (e: Exception) {
                 emit(Result.Error(e.message.toString()))
+                Log.d("DOWNLOAD ERROR MESSAGE", e.message.toString())
             }
         }
 

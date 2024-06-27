@@ -88,6 +88,8 @@ class DetailActivity : AppCompatActivity() {
                 Toast.makeText(this, "Notifications permission rejected", Toast.LENGTH_SHORT).show()
             }
         }
+
+    private lateinit var chatType: String
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityDetailBinding.inflate(layoutInflater)
@@ -96,9 +98,9 @@ class DetailActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(false)
         chatId = intent.getStringExtra("chatId")!!
 //        chatType = intent.getStringExtra("chatType")!!
-        val chatName = intent.getStringExtra("chatName")
+//        val chatName = intent.getStringExtra("chatName")
         Log.d("CHAT ID", "CHAT ID: $chatId")
-        binding.tvName.text = chatName
+//        binding.tvName.text = chatName
         val rootView = binding.rootView
         snackbar = Snackbar.make(
             rootView,
@@ -117,7 +119,6 @@ class DetailActivity : AppCompatActivity() {
         fetchData()
         setupSend()
 //        setFavoriteButton(item!!)
-        setWebSocket(chatId, chatName!!)
         setAttachmentButton()
         observeDownload()
         if (Build.VERSION.SDK_INT >= 33) {
@@ -141,20 +142,19 @@ class DetailActivity : AppCompatActivity() {
                 is Result.Success -> {
                     binding.progressBar.visibility = View.GONE
                     showToast(it.data.message)
-                    Log.d("DOWNLOAD", it.data.message)
+                    Log.d("DOWNLOAD SUCCESS", it.data.message)
                 }
 
                 is Result.Error -> {
                     binding.progressBar.visibility = View.GONE
-                    Log.d("DOWNLOAD", it.error)
+                    Log.d("DOWNLOAD ERROR", it.error)
                     showToast(it.error)
                 }
 
                 Result.Loading -> {
                     binding.progressBar.visibility = View.VISIBLE
+                    Log.d("DOWNLOAD LOADING", "LOADING")
                 }
-
-                else -> {}
             }
 
         }
@@ -503,7 +503,15 @@ class DetailActivity : AppCompatActivity() {
                 is Result.Success -> {
                     Log.d("Result", "Success")
                     binding.progressBar.visibility = View.GONE
-                    adapter.setData(it.data as MutableList<MessagesItem>)
+                    val chatType = it.data.chatType
+                    binding.tvChatType.text = if (chatType == "Group") {
+                        "Group Chat"
+                    }else {
+                        "Private Chat"
+                    }
+                    binding.tvName.text = it.data.chatName
+                    setWebSocket(chatId, it.data.chatName)
+                    adapter.setData(it.data.messages as MutableList<MessagesItem>)
                 }
 
                 else -> {

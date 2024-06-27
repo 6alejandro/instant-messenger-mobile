@@ -12,6 +12,7 @@ import com.tegas.instant_messenger_mobile.data.ChatRepository
 import com.tegas.instant_messenger_mobile.data.Result
 import com.tegas.instant_messenger_mobile.data.UserModel
 import com.tegas.instant_messenger_mobile.data.local.DbModule
+import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatDetailResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.DownloadResponse
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
@@ -25,8 +26,8 @@ import java.time.ZoneId
 class DetailViewModel(private val repository: ChatRepository, private val db: DbModule) :
     ViewModel() {
 
-    private val _detailViewModel = MediatorLiveData<Result<List<MessagesItem>>>()
-    val detailViewModel: LiveData<Result<List<MessagesItem>>> = _detailViewModel
+    private val _detailViewModel = MediatorLiveData<Result<ChatDetailResponse>>()
+    val detailViewModel: LiveData<Result<ChatDetailResponse>> = _detailViewModel
 
     private val _participants = MediatorLiveData<Result<List<ParticipantDataItem>>>()
     val participants: LiveData<Result<List<ParticipantDataItem>>> = _participants
