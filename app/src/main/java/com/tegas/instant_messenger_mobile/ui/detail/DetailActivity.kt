@@ -64,6 +64,8 @@ class DetailActivity : AppCompatActivity() {
     private lateinit var adapter: MessageAdapter
     private val multiplePermissionId = 14
     private var nim: String = ""
+//    private lateinit var chatType: String
+    private lateinit var chatId: String
     private val viewModel by viewModels<DetailViewModel> {
         ViewModelFactory.getInstance(this)
     }
@@ -72,7 +74,7 @@ class DetailActivity : AppCompatActivity() {
     } else {
         arrayListOf(
             Manifest.permission.READ_EXTERNAL_STORAGE,
-            android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
         )
     }
     private lateinit var snackbar: Snackbar
@@ -92,10 +94,11 @@ class DetailActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         supportActionBar?.setDisplayHomeAsUpEnabled(false)
-        val item = intent.getParcelableExtra<ChatsItem>("item")
-        val chatId = intent.getStringExtra("chatId")
+        chatId = intent.getStringExtra("chatId")!!
+//        chatType = intent.getStringExtra("chatType")!!
+        val chatName = intent.getStringExtra("chatName")
         Log.d("CHAT ID", "CHAT ID: $chatId")
-        binding.tvName.text = item?.name
+        binding.tvName.text = chatName
         val rootView = binding.rootView
         snackbar = Snackbar.make(
             rootView,
@@ -109,21 +112,21 @@ class DetailActivity : AppCompatActivity() {
                 doOperation()
             }
         }
-        setRoomChat(item?.chatType)
-        viewModel.getChatDetails(chatId!!)
-        fetchData()
+        setRoomChat()
         getSession(chatId)
+        fetchData()
         setupSend()
-        setParticipantName(item?.chatType, chatId)
-        setFavoriteButton(item!!)
-        setWebSocket(chatId)
+//        setFavoriteButton(item!!)
+        setWebSocket(chatId, chatName!!)
         setAttachmentButton()
         observeDownload()
-
         if (Build.VERSION.SDK_INT >= 33) {
             requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
 
+        binding.backButton.setOnClickListener {
+            onBackPressed()
+        }
     }
 
     private fun setAttachmentButton() {
@@ -157,36 +160,16 @@ class DetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun setParticipantName(chatType: String?, chatId: String) {
-        if (chatType == "group") {
-            viewModel.getParticipants(chatId)
-
-            viewModel.participants.observe(this) { result ->
-                when (result) {
-                    is Result.Success -> {
-                        adapter.setParticipants(result.data)
-                    }
-
-                    is Result.Error -> {
-                        // Handle error
-                    }
-
-                    else -> {}
-                }
-            }
-        }
-    }
-
-    private fun setRoomChat(chatType: String?) {
-        when (chatType) {
-            "private" -> {
-                binding.tvChatType.text = "Personal Chat"
-            }
-
-            "group" -> {
-                binding.tvChatType.text = "Group Chat"
-            }
-        }
+    private fun setRoomChat() {
+//        when (chatType) {
+//            "private" -> {
+//                binding.tvChatType.text = "Personal Chat"
+//            }
+//
+//            "group" -> {
+//                binding.tvChatType.text = "Group Chat"
+//            }
+//        }
         Glide
             .with(this)
             .load(
@@ -196,10 +179,11 @@ class DetailActivity : AppCompatActivity() {
             .into(binding.ivImage)
     }
 
-    private fun setWebSocket(chatId: String) {
+    private fun setWebSocket(chatId: String?, chatName: String) {
         val intent = Intent(this, WebSocketService::class.java)
         intent.putExtra("chatId", chatId)
         intent.putExtra("nim", nim)
+//        intent.putExtra("chatType", chatType)
         startService(intent)
         val uri = URI("ws://192.168.137.1:8181/ws") // Replace with your server IP or hostname
         webSocketClient = object : WebSocketClient(uri) {
@@ -216,6 +200,7 @@ class DetailActivity : AppCompatActivity() {
                 val gson = Gson()
                 val messageData: MessagesItem = gson.fromJson(jSOnString, MessagesItem::class.java)
                 adapter.addMessage(messageData)
+                adapter.notifyDataSetChanged()
 
                 Log.d("ADDMESSAGEEEEEEEEEEE", "MESSAGE REFRESHED BY WEBSOCKET")
                 // Handle incoming messages here
@@ -223,7 +208,7 @@ class DetailActivity : AppCompatActivity() {
                 val text = messageData.content
                 val chatId = messageData.chatId
                 if (messageData.senderId != nim) {
-                    sendNotification(sender, text, chatId)
+                    sendNotification(sender, text, chatId, chatName)
                 }
             }
 
@@ -239,10 +224,6 @@ class DetailActivity : AppCompatActivity() {
     }
 
     private fun setFavoriteButton(item: ChatsItem) {
-
-        binding.backButton.setOnClickListener {
-            onBackPressed()
-        }
         binding.ivPhone.setOnClickListener {
             viewModel.saveChat(item)
         }
@@ -421,6 +402,7 @@ class DetailActivity : AppCompatActivity() {
             binding.rvChat.layoutManager = LinearLayoutManager(this).apply {
                 stackFromEnd = true
             }
+            viewModel.getChatDetails(chatId, user.nim)
             binding.rvChat.setHasFixedSize(true)
             nim = user.nim
             adapter = MessageAdapter(viewModel, user.nim)
@@ -549,11 +531,14 @@ class DetailActivity : AppCompatActivity() {
         )
     }
 
-    private fun sendNotification(title: String, message: String, chatId: String) {
+    private fun sendNotification(title: String, message: String, chatId: String, chatName: String) {
         Log.d("Notification", "Triggered")
         Log.d("NOTIFICATION", "ChatId: $chatId")
+//        Log.d("NOTIFICATION", "ChatType: $chatType")
         val intent = Intent(applicationContext, DetailActivity::class.java)
         intent.putExtra("chatId", chatId)
+//        intent.putExtra("chatType", chatType)
+        intent.putExtra("chatName", chatName)
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
@@ -568,7 +553,7 @@ class DetailActivity : AppCompatActivity() {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setSubText(getString(R.string.notification_subtext))
             .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
+            .setAutoCancel(false)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(

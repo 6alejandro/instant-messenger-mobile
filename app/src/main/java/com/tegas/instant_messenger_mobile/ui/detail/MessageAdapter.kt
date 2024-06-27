@@ -1,9 +1,11 @@
 package com.tegas.instant_messenger_mobile.ui.detail
 
+import android.text.format.DateUtils.formatDateTime
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import com.tegas.instant_messenger_mobile.R
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ParticipantDataItem
 import com.tegas.instant_messenger_mobile.databinding.ItemChatsBinding
@@ -14,15 +16,8 @@ class MessageAdapter(
     private val viewModel: DetailViewModel,
     private val nim: String,
     private val data: MutableList<MessagesItem> = mutableListOf(),
+//    private val chatType: String
 ) : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
-
-    private var participants: List<ParticipantDataItem> = emptyList()
-
-    fun setParticipants(participants: List<ParticipantDataItem>) {
-        this.participants = participants
-        notifyDataSetChanged()
-    }
-
     fun setData(data: MutableList<MessagesItem>) {
         this.data.clear()
         this.data.addAll(data)
@@ -38,15 +33,13 @@ class MessageAdapter(
         RecyclerView.ViewHolder(binding.root) {
         fun bind(item: MessagesItem) {
 
-            val sender = participants.find { it.userId == item.senderId }
-            val senderName = sender?.name ?: "Unknown"
-
             if (item.senderId != nim) {
 
                 if (item.attachments != "")
                 {
                   binding.layoutReceived.tvAttachments.visibility = View.VISIBLE
                   binding.layoutReceived.tvAttachments.text = item.attachments.toString()
+
                     binding.layoutReceived.tvAttachments.setOnClickListener {
                         viewModel.downloadFile(binding.layoutSent.tvAttachments.text.toString())
                     }
@@ -54,14 +47,12 @@ class MessageAdapter(
                 binding.layoutSent.itemSents.visibility = View.GONE
                 binding.layoutReceived.chatReceived.text = item.content
                 binding.layoutReceived.tvTime.text = formatDateTime(item.sentAt)
-
-                if (senderName != "Unknown") {
-                    binding.layoutReceived.tvName.visibility = View.VISIBLE
-                    binding.layoutReceived.tvName.text = senderName
-                } else {
-                    binding.layoutReceived.tvName.visibility = View.GONE
-                }
-
+//                if (chatType == "group") {
+//                    binding.layoutReceived.tvName.visibility = View.VISIBLE
+//                    binding.layoutReceived.tvName.text = item.senderName
+//                } else {
+//                    binding.layoutReceived.tvName.visibility = View.GONE
+//                }
             } else {
 
                 if (item.attachments != "")
@@ -74,16 +65,11 @@ class MessageAdapter(
                 }
 
                 binding.layoutReceived.itemReceived.visibility = View.GONE
-                binding.layoutSent.tvName.text = senderName
                 binding.layoutSent.chatSent.text = item.content
                 binding.layoutSent.tvTime.text = formatDateTime(item.sentAt)
+                binding.layoutSent.messageState.setImageResource(R.drawable.single_check)
 
-                if (senderName != "Unknown") {
-                    binding.layoutSent.tvName.visibility = View.VISIBLE
-                    binding.layoutSent.tvName.text = senderName
-                } else {
-                    binding.layoutSent.tvName.visibility = View.GONE
-                }
+                binding.layoutSent.tvName.visibility = View.GONE
             }
         }
 

@@ -12,7 +12,16 @@ data class ChatDetailResponse(
 	val messages: List<MessagesItem> = emptyList(),
 
 	@field:SerializedName("error")
-	val error: Boolean
+	val error: Boolean,
+
+	@field:SerializedName("chatId")
+	val chatId: String,
+
+	@field:SerializedName("chatName")
+	val chatName: String,
+
+	@field:SerializedName("chatType")
+	val chatType: String,
 )
 
 @Parcelize
@@ -34,7 +43,10 @@ data class MessagesItem(
 	val sentAt: String,
 
 	@field:SerializedName("content")
-	val content: String
+	val content: String,
+
+	@field:SerializedName("senderName")
+	val senderName: String
 ): Parcelable {
 
 	fun toJson(): String {

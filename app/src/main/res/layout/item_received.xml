@@ -45,16 +45,18 @@
             android:text="@string/hello_this_is_their_message"
             android:gravity="start"
             android:textSize="15sp"
+            android:maxWidth="250dp"
             android:maxLines="100"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
-        
+
         <TextView
             android:visibility="gone"
             android:id="@+id/tv_attachments"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             app:layout_constraintTop_toBottomOf="@id/chat_received"
+            app:layout_constraintStart_toStartOf="@id/chat_received"
             android:text="Attachment available"
             android:textStyle="bold"
             android:layout_marginTop="8dp"/>

@@ -35,7 +35,8 @@ interface ApiService {
 
     @GET("chatDetail")
     suspend fun getChatDetails(
-        @Query("chatId") chatId: String
+        @Query("chatId") chatId: String,
+        @Query("userId") userId: String
     ): ChatDetailResponse
 
     @FormUrlEncoded

@@ -41,10 +41,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/chat_sent"
-            android:text="@string/hello_this_is_your_message"
+            android:text="lllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll"
             android:fontFamily="@font/montserrat"
             android:gravity="end"
             android:maxLines="100"
+            android:maxWidth="250dp"
             android:textSize="15sp"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"/>
@@ -73,10 +74,11 @@
 
     <ImageView
         android:layout_width="18dp"
+        android:id="@+id/message_state"
         android:layout_height="18dp"
         android:layout_margin="8dp"
         app:layout_constraintEnd_toStartOf="@id/tv_time"
         app:layout_constraintTop_toTopOf="@id/tv_time"
         app:layout_constraintBottom_toBottomOf="@id/tv_time"
-        android:src="@drawable/double_check"/>
+        android:src="@drawable/clock"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

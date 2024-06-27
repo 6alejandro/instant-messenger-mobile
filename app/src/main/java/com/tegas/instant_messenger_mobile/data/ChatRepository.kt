@@ -36,12 +36,12 @@ class ChatRepository(
             }
         }
 
-    fun getChatDetails(chatId: String): LiveData<Result<List<MessagesItem>>> =
+    fun getChatDetails(chatId: String, userId: String): LiveData<Result<List<MessagesItem>>> =
         liveData(Dispatchers.IO) {
             emit(Result.Loading)
             try {
                 Log.d("REPOSITORY", "REPOSITORY CHAT ID: $chatId")
-                val response = apiService.getChatDetails(chatId)
+                val response = apiService.getChatDetails(chatId, userId)
                 val messages = response.messages
                 emit(Result.Success(messages))
             } catch (e: Exception) {

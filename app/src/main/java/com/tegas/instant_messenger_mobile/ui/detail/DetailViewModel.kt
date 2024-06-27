@@ -20,6 +20,7 @@ import com.tegas.instant_messenger_mobile.data.retrofit.response.SendResponse
 import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
 import java.io.File
+import java.time.ZoneId
 
 class DetailViewModel(private val repository: ChatRepository, private val db: DbModule) :
     ViewModel() {
@@ -58,9 +59,9 @@ class DetailViewModel(private val repository: ChatRepository, private val db: Db
     val resultDelFav = MutableLiveData<Boolean>()
 
 
-    fun getChatDetails(chatId: String) {
+    fun getChatDetails(chatId: String, userId: String) {
         Log.d("DETAIL VIEW MODEL", "DetailViewModel Chat ID: $chatId")
-        val liveData = repository.getChatDetails(chatId)
+        val liveData = repository.getChatDetails(chatId, userId)
         _detailViewModel.addSource(liveData) { result ->
             _detailViewModel.value = result
         }
