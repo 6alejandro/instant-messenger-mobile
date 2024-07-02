@@ -46,7 +46,9 @@ data class MessagesItem(
 	val content: String,
 
 	@field:SerializedName("senderName")
-	val senderName: String
+	val senderName: String,
+
+	var isRead: Boolean = false
 ): Parcelable {
 
 	fun toJson(): String {

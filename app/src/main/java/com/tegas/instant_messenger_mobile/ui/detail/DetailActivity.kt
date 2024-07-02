@@ -39,6 +39,9 @@ import com.tegas.instant_messenger_mobile.data.Result
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
 import com.tegas.instant_messenger_mobile.databinding.ActivityDetailBinding
+import com.tegas.instant_messenger_mobile.notification.CHANNEL_ID
+import com.tegas.instant_messenger_mobile.notification.CHANNEL_NAME
+import com.tegas.instant_messenger_mobile.notification.NOTIFICATION_ID
 import com.tegas.instant_messenger_mobile.ui.ViewModelFactory
 import com.tegas.instant_messenger_mobile.ui.login.LoginActivity
 import com.tegas.instant_messenger_mobile.utils.AndroidDownloader
@@ -50,6 +53,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -150,6 +154,7 @@ class DetailActivity : AppCompatActivity() {
 
         binding.editText.addTextChangedListener(textWatcher)
 
+
     }
 
     private fun setAttachmentButton() {
@@ -226,26 +231,36 @@ class DetailActivity : AppCompatActivity() {
                 // Send user ID after connection is open
                 val chatID = "{\"id\": \"$chatId\"}" // Replace with appropriate user ID
                 send(chatID)
+
+                sendReadReceipt()
+
             }
 
             override fun onMessage(message: String?) {
                 Log.d("WebSocket", "Received: $message")
-                val jSOnString = """$message"""
-                val gson = Gson()
-                val messageData: MessagesItem = gson.fromJson(jSOnString, MessagesItem::class.java)
-                adapter.addMessage(messageData)
-                adapter.notifyDataSetChanged()
+                if (message != "Pesan telah dibaca") {
+                    val jSOnString = """$message"""
+                    val gson = Gson()
+                    val messageData: MessagesItem =
+                        gson.fromJson(jSOnString, MessagesItem::class.java)
+                    adapter.addMessage(messageData)
+                    adapter.notifyDataSetChanged()
 
-                Log.d("ADDMESSAGEEEEEEEEEEE", "MESSAGE REFRESHED BY WEBSOCKET")
-                // Handle incoming messages here
-                val sender = messageData.senderId
-                val text = messageData.content
-                val chatId = messageData.chatId
-                if (messageData.senderId != nim) {
-                    sendNotification(sender, text, chatId, chatName)
+                    Log.d("ADDMESSAGEEEEEEEEEEE", "MESSAGE REFRESHED BY WEBSOCKET")
+                    // Handle incoming messages here
+                    val sender = messageData.senderName
+                    val text = messageData.content
+                    val chatId = messageData.chatId
+
+                    Log.d("SENDER NAME", sender)
+                    if (messageData.senderId != nim) {
+                        sendNotification(sender, text, chatId, chatName)
+                    }
+
+                } else {
+                    Log.d("PESAN DIBACA", message)
+                    adapter.updateMessageStateToRead()
                 }
-
-
             }
 
             override fun onClose(code: Int, reason: String?, remote: Boolean) {
@@ -598,7 +613,7 @@ class DetailActivity : AppCompatActivity() {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setSubText(getString(R.string.notification_subtext))
             .setContentIntent(pendingIntent)
-            .setAutoCancel(false)
+            .setAutoCancel(true)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -618,6 +633,18 @@ class DetailActivity : AppCompatActivity() {
         private const val CHANNEL_NAME = "dicoding channel"
     }
 
+    fun sendReadReceipt() {
+        // Membuat objek JSON
+        val readReceipt = JSONObject()
+        readReceipt.put("chatId", chatId)
+        readReceipt.put("read", true)
+
+        // Mengirim objek JSON melalui WebSocket atau proses yang sesuai
+        // Contoh:
+        // ws.send(readReceipt.toString()) // Mengirimkan sebagai string JSON
+        Log.d("READREADREAD", readReceipt.toString())
+        webSocketClient.send(readReceipt.toString())
+    }
 }
 
 

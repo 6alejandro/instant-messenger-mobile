@@ -36,6 +36,22 @@ class MessageAdapter(
         notifyItemInserted(data.size - 1)
     }
 
+    fun updateMessageStateToRead() {
+        // Loop through the data and update the icon for all messages sent by the user
+        for (message in data) {
+            if (message.senderId == nim) {
+                message.isRead = true // Assuming you have an 'isRead' property in MessagesItem
+            }
+        }
+        notifyDataSetChanged()
+    }
+
+    // Fungsi tambahan untuk memperbarui state pesan di RecyclerView
+//    fun setMessageRead(read: Boolean) {
+//
+//    }
+
+
     val downloader = AndroidDownloader(context)
 
     inner class MessageViewHolder(private val binding: ItemChatsBinding) :
@@ -118,12 +134,21 @@ class MessageAdapter(
                 binding.layoutReceived.itemReceived.visibility = View.GONE
                 binding.layoutSent.chatSent.text = item.content
                 binding.layoutSent.tvTime.text = formatDateTime(item.sentAt)
-                binding.layoutSent.messageState.setImageResource(R.drawable.single_check)
                 binding.layoutSent.tvName.text = item.senderName
 
                 binding.layoutSent.tvName.visibility = View.GONE
+
+                // Update the drawable based on the read state
+                binding.layoutSent.messageState.setImageResource(
+                    if (item.isRead) R.drawable.double_check else R.drawable.single_check
+                )
             }
         }
+
+        // New method to update message state drawable if message is read
+//        fun changeMessageIcon() {
+//            binding.layoutSent.messageState.setImageResource(R.drawable.double_check)
+//        }
 
         private fun formatDateTime(timestamp: String): String {
             val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
