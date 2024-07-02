@@ -1,33 +1,30 @@
 package com.tegas.instant_messenger_mobile.ui.main
 
 import android.content.Intent
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.util.Log
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import com.tegas.instant_messenger_mobile.data.Result
-import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
-import com.tegas.instant_messenger_mobile.databinding.ActivityMainSecondBinding
-import com.tegas.instant_messenger_mobile.ui.ViewModelFactory
-import com.tegas.instant_messenger_mobile.ui.detail.DetailActivity
-import com.tegas.instant_messenger_mobile.ui.favorite.FavoriteActivity
-import com.tegas.instant_messenger_mobile.ui.login.LoginActivity
-import java.util.Locale
 import androidx.appcompat.widget.SearchView
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.navigation.ui.AppBarConfiguration
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.google.android.material.navigation.NavigationView
 import com.tegas.instant_messenger_mobile.R
+import com.tegas.instant_messenger_mobile.data.Result
+import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
 import com.tegas.instant_messenger_mobile.databinding.ActivityMainBinding
+import com.tegas.instant_messenger_mobile.ui.ViewModelFactory
+import com.tegas.instant_messenger_mobile.ui.detail.DetailActivity
+import com.tegas.instant_messenger_mobile.ui.login.LoginActivity
 import de.hdodenhof.circleimageview.CircleImageView
+import java.util.Locale
 
 
 class MainActivity : AppCompatActivity() {
@@ -62,6 +59,7 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.appBarMain.toolBar)
         supportActionBar?.setDisplayHomeAsUpEnabled(false)
         supportActionBar?.title = ""
+        supportActionBar?.setBackgroundDrawable(ColorDrawable(resources.getColor(R.color.white)))
         val drawerLayout: DrawerLayout = binding.drawerLayout
         val navView: NavigationView = binding.navView
 
@@ -78,21 +76,22 @@ class MainActivity : AppCompatActivity() {
         Glide.with(this)
             .load(R.drawable.daniela_villarreal)
             .into(profileCircleImageView)
-        tvName  = navView.getHeaderView(0).findViewById(R.id.tv_name)
-        tvNim  = navView.getHeaderView(0).findViewById(R.id.tv_nim)
+        tvName = navView.getHeaderView(0).findViewById(R.id.tv_name)
+        tvNim = navView.getHeaderView(0).findViewById(R.id.tv_nim)
         appBarConfiguration = AppBarConfiguration(
             setOf(
-                R.id.nav_favorite, R.id.nav_logout
+                R.id.nav_home, R.id.nav_logout
             ), drawerLayout
         )
 
         navView.setNavigationItemSelectedListener { menuItem ->
-            when(menuItem.itemId) {
-                R.id.nav_favorite -> {
-                    val intent = Intent(this, FavoriteActivity::class.java)
+            when (menuItem.itemId) {
+                R.id.nav_home -> {
+                    val intent = Intent(this, MainActivity::class.java)
                     startActivity(intent)
                     true
                 }
+
                 else -> {
                     viewModel.logout()
                     true

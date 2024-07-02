@@ -33,4 +33,8 @@
 
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="login">Login</string>
+    <string name="nim">NIM</string>
+    <string name="please_enter_your_id_and_password_to_login">Please enter your ID and password to login</string>
+    <string name="password">Password</string>
 </resources>

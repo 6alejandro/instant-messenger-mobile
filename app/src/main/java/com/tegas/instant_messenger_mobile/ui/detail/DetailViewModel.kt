@@ -1,5 +1,8 @@
 package com.tegas.instant_messenger_mobile.ui.detail
 
+import android.app.DownloadManager
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
@@ -41,6 +44,24 @@ class DetailViewModel(private val repository: ChatRepository, private val db: Db
         _downloadResponse.addSource(liveData) { result ->
             _downloadResponse.value = result
         }
+    }
+
+    private val _downloadId = MutableLiveData<Long>()
+    val downloadId: LiveData<Long> = _downloadId
+
+    fun downloadFiles(context: Context, downloadUrl: String, title: String, description: String) {
+        Log.d("Download", "Download Triggered")
+        Log.d("Download", downloadUrl)
+        Log.d("Download", title)
+        Log.d("Download", description)
+        val request = DownloadManager.Request(Uri.parse(downloadUrl))
+            .setTitle(title)
+            .setDescription(description)
+
+        val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val id = downloadManager.enqueue(request)
+
+        _downloadId.value = id
     }
 
 

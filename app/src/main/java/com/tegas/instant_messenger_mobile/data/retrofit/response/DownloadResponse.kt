@@ -8,5 +8,8 @@ data class DownloadResponse(
 	val error: Boolean,
 
 	@field:SerializedName("message")
-	val message: String
+	val message: String,
+
+	@field:SerializedName("filePath")
+	val filePath: String? = null
 )

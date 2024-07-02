@@ -1,25 +1,29 @@
 package com.tegas.instant_messenger_mobile.ui.detail
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.text.format.DateUtils.formatDateTime
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.core.content.ContextCompat.startActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.tegas.instant_messenger_mobile.R
 import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ParticipantDataItem
 import com.tegas.instant_messenger_mobile.databinding.ItemChatsBinding
+import com.tegas.instant_messenger_mobile.utils.AndroidDownloader
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 class MessageAdapter(
+    private val context: Context,
     private val viewModel: DetailViewModel,
     private val nim: String,
     private val data: MutableList<MessagesItem> = mutableListOf(),
-//    private val chatType: String
+    private val chatType: String
 ) : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
     fun setData(data: MutableList<MessagesItem>) {
         this.data.clear()
@@ -32,36 +36,82 @@ class MessageAdapter(
         notifyItemInserted(data.size - 1)
     }
 
+    val downloader = AndroidDownloader(context)
+
     inner class MessageViewHolder(private val binding: ItemChatsBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(item: MessagesItem) {
 
             if (item.senderId != nim) {
 
-                if (item.attachments != "")
-                {
-                  binding.layoutReceived.tvAttachments.visibility = View.VISIBLE
-                  binding.layoutReceived.tvAttachments.text = item.attachments.toString()
-
+                if (item.attachments != "") {
+                    binding.layoutReceived.tvAttachments.visibility = View.VISIBLE
+                    binding.layoutReceived.tvAttachments.text = item.attachments.toString()
                     binding.layoutReceived.tvAttachments.setOnClickListener {
-                        val url = "http://192.168.137.1:5000/download?path=" + item.attachments.toString()
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        binding.root.context.startActivity(intent)
+//                        viewModel.downloadFiles(
+//                            binding.root.context,
+//                            item.attachments.toString(),
+//                            item.attachments.toString()
+//                                .substring(item.attachments.toString().lastIndexOf('/') + 1),
+//                            "Downloading"
+//                        )
+
+                        val path = item.attachments.toString()
+                        val baseUrl = "http://192.168.137.1:5000/download"
+
+                        fun encodeUrl(baseUrl: String, path: String): String {
+                            val builder = Uri.parse(baseUrl).buildUpon()
+                            builder.appendQueryParameter("path", path)
+                            return builder.build().toString()
+                        }
+
+                        val encodeUrl = encodeUrl(baseUrl, path)
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(encodeUrl))
+                        context.startActivity(intent)
+
+//                        downloader.downloadFile(encodeUrl)
                     }
+
                 }
                 binding.layoutSent.itemSents.visibility = View.GONE
                 binding.layoutReceived.chatReceived.text = item.content
                 binding.layoutReceived.tvTime.text = formatDateTime(item.sentAt)
+                binding.layoutReceived.tvName.text = item.senderName
+
+                if (chatType == "group") {
+                    binding.layoutReceived.tvName.visibility = View.VISIBLE
+                } else {
+                    binding.layoutReceived.tvName.visibility = View.GONE
+                }
+
             } else {
 
-                if (item.attachments != "")
-                {
+                if (item.attachments != "") {
                     binding.layoutSent.tvAttachments.visibility = View.VISIBLE
                     binding.layoutSent.tvAttachments.text = item.attachments.toString()
                     binding.layoutSent.tvAttachments.setOnClickListener {
-                        val url = "http://192.168.137.1:5000/" + item.attachments.toString()
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        binding.root.context.startActivity(intent)
+                        val path = item.attachments.toString()
+                        val baseUrl = "http://192.168.137.1:5000/download"
+
+                        fun encodeUrl(baseUrl: String, path: String): String {
+                            val builder = Uri.parse(baseUrl).buildUpon()
+                            builder.appendQueryParameter("path", path)
+                            return builder.build().toString()
+                        }
+
+                        val encodeUrl = encodeUrl(baseUrl, path)
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(encodeUrl))
+                        context.startActivity(intent)
+
+//                        viewModel.downloadFiles(
+//                            binding.root.context,
+//                            encodeUrl,
+//                            path.substring(item.attachments.toString().lastIndexOf('/') + 1),
+//                            "Downloading"
+//                        )
+
+//                        downloader.downloadFile(encodeUrl)
+
                     }
                 }
 
@@ -69,6 +119,7 @@ class MessageAdapter(
                 binding.layoutSent.chatSent.text = item.content
                 binding.layoutSent.tvTime.text = formatDateTime(item.sentAt)
                 binding.layoutSent.messageState.setImageResource(R.drawable.single_check)
+                binding.layoutSent.tvName.text = item.senderName
 
                 binding.layoutSent.tvName.visibility = View.GONE
             }
@@ -89,7 +140,8 @@ class MessageAdapter(
                 parent,
                 false
             )
-        ))
+                    )
+        )
     }
 
     override fun getItemCount(): Int {

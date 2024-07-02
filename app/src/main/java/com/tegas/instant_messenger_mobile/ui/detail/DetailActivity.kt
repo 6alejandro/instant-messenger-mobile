@@ -15,6 +15,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -27,6 +29,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.google.android.material.snackbar.Snackbar
@@ -38,6 +41,7 @@ import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
 import com.tegas.instant_messenger_mobile.databinding.ActivityDetailBinding
 import com.tegas.instant_messenger_mobile.ui.ViewModelFactory
 import com.tegas.instant_messenger_mobile.ui.login.LoginActivity
+import com.tegas.instant_messenger_mobile.utils.AndroidDownloader
 import com.tegas.instant_messenger_mobile.utils.appSettingOpen
 import com.tegas.instant_messenger_mobile.utils.isConnected
 import com.tegas.instant_messenger_mobile.utils.warningPermissionDialog
@@ -83,13 +87,28 @@ class DetailActivity : AppCompatActivity() {
             ActivityResultContracts.RequestPermission()
         ) { isGranted: Boolean ->
             if (isGranted) {
-                Toast.makeText(this, "Notifications permission granted", Toast.LENGTH_SHORT).show()
+//                Toast.makeText(this, "Notifications permission granted", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(this, "Notifications permission rejected", Toast.LENGTH_SHORT).show()
             }
         }
 
     private lateinit var chatType: String
+
+    private val textWatcher: TextWatcher = object : TextWatcher {
+        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+
+        }
+
+        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+            Log.d("TEXTWATCHER", s.toString())
+        }
+
+        override fun afterTextChanged(s: Editable?) {
+
+        }
+
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityDetailBinding.inflate(layoutInflater)
@@ -128,6 +147,9 @@ class DetailActivity : AppCompatActivity() {
         binding.backButton.setOnClickListener {
             onBackPressed()
         }
+
+        binding.editText.addTextChangedListener(textWatcher)
+
     }
 
     private fun setAttachmentButton() {
@@ -142,6 +164,8 @@ class DetailActivity : AppCompatActivity() {
                 is Result.Success -> {
                     binding.progressBar.visibility = View.GONE
                     showToast(it.data.message)
+                    val message = it.data.message
+                    val filePath = it.data.filePath
                     Log.d("DOWNLOAD SUCCESS", it.data.message)
                 }
 
@@ -158,6 +182,14 @@ class DetailActivity : AppCompatActivity() {
             }
 
         }
+
+        viewModel.downloadId.observe(this, Observer { downloadId ->
+            Log.d("DownloadViewModel", "Download ID changed: $downloadId")
+            Toast.makeText(this, "Download ID changed: $downloadId", Toast.LENGTH_SHORT).show()
+            // Update UI or perform actions based on download ID
+        })
+
+
     }
 
     private fun setRoomChat() {
@@ -178,6 +210,8 @@ class DetailActivity : AppCompatActivity() {
             )
             .into(binding.ivImage)
     }
+
+
 
     private fun setWebSocket(chatId: String?, chatName: String) {
         val intent = Intent(this, WebSocketService::class.java)
@@ -210,6 +244,8 @@ class DetailActivity : AppCompatActivity() {
                 if (messageData.senderId != nim) {
                     sendNotification(sender, text, chatId, chatName)
                 }
+
+
             }
 
             override fun onClose(code: Int, reason: String?, remote: Boolean) {
@@ -219,6 +255,7 @@ class DetailActivity : AppCompatActivity() {
             override fun onError(ex: Exception?) {
                 Log.e("WebSocket", "Error: ${ex?.message}")
             }
+
         }
         webSocketClient.connect()
     }
@@ -405,8 +442,6 @@ class DetailActivity : AppCompatActivity() {
             viewModel.getChatDetails(chatId, user.nim)
             binding.rvChat.setHasFixedSize(true)
             nim = user.nim
-            adapter = MessageAdapter(viewModel, user.nim)
-            binding.rvChat.adapter = adapter
 
 
             binding.iconSend.setOnClickListener {
@@ -504,13 +539,15 @@ class DetailActivity : AppCompatActivity() {
                     Log.d("Result", "Success")
                     binding.progressBar.visibility = View.GONE
                     val chatType = it.data.chatType
-                    binding.tvChatType.text = if (chatType == "Group") {
+                    binding.tvChatType.text = if (chatType == "group") {
                         "Group Chat"
                     }else {
                         "Private Chat"
                     }
+                    adapter = MessageAdapter(this, viewModel, nim, chatType = chatType)
                     binding.tvName.text = it.data.chatName
                     setWebSocket(chatId, it.data.chatName)
+                    binding.rvChat.adapter = adapter
                     adapter.setData(it.data.messages as MutableList<MessagesItem>)
                 }
 
