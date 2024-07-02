@@ -30,7 +30,6 @@ class MessageAdapter(
         this.data.addAll(data)
         notifyDataSetChanged()
     }
-
     fun addMessage(message: MessagesItem) {
         data.add(message)
         notifyItemInserted(data.size - 1)

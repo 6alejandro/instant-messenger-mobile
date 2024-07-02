@@ -1,5 +1,7 @@
 package com.tegas.instant_messenger_mobile.ui.main
 
+import android.content.Context
+import android.content.Intent
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -7,10 +9,12 @@ import com.bumptech.glide.Glide
 import com.tegas.instant_messenger_mobile.R
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
 import com.tegas.instant_messenger_mobile.databinding.ItemContactBinding
+import com.tegas.instant_messenger_mobile.ui.detail.WebSocketService
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 class ChatAdapter(
+    private val context: Context,
     private var data: MutableList<ChatsItem> = mutableListOf(),
     private val listener: (ChatsItem) -> Unit,
 //    private val context: Context

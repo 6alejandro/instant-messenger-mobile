@@ -11,19 +11,26 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
+import androidx.core.content.ContextCompat.startActivity
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.google.android.material.navigation.NavigationView
+import com.google.gson.Gson
 import com.tegas.instant_messenger_mobile.R
 import com.tegas.instant_messenger_mobile.data.Result
 import com.tegas.instant_messenger_mobile.data.retrofit.response.ChatsItem
+import com.tegas.instant_messenger_mobile.data.retrofit.response.MessagesItem
 import com.tegas.instant_messenger_mobile.databinding.ActivityMainBinding
 import com.tegas.instant_messenger_mobile.ui.ViewModelFactory
 import com.tegas.instant_messenger_mobile.ui.detail.DetailActivity
+import com.tegas.instant_messenger_mobile.ui.detail.WebSocketService
 import com.tegas.instant_messenger_mobile.ui.login.LoginActivity
 import de.hdodenhof.circleimageview.CircleImageView
+import org.java_websocket.client.WebSocketClient
+import org.java_websocket.handshake.ServerHandshake
+import java.net.URI
 import java.util.Locale
 
 
@@ -37,9 +44,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var profileCircleImageView: CircleImageView
     private lateinit var tvName: TextView
     private lateinit var tvNim: TextView
+    private lateinit var webSocketClient: WebSocketClient
 
     private val adapter by lazy {
-        ChatAdapter {
+        ChatAdapter(this) {
             Intent(this, DetailActivity::class.java).apply {
                 putExtra("item", it)
                 putExtra("chatId", it.chatId)
@@ -145,6 +153,11 @@ class MainActivity : AppCompatActivity() {
                     mList.clear() // Clear existing list before update
                     mList.addAll(result.data)
                     adapter.setData(mList)
+
+                    for (i in result.data) {
+                        setWebSocket(i.chatId)
+                        Log.d("I.CHATID", i.chatId)
+                    }
                 }
             }
         }
@@ -189,6 +202,72 @@ class MainActivity : AppCompatActivity() {
         intent.putExtra("item", item)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         startActivity(intent)
+    }
+
+    private fun setWebSocket(chatId: String?) {
+        val intent = Intent(this, WebSocketService::class.java)
+        intent.putExtra("chatId", chatId)
+        intent.putExtra("nim", nim)
+//        intent.putExtra("chatType", chatType)
+        startService(intent)
+        val uri = URI("ws://192.168.137.1:8181/ws") // Replace with your server IP or hostname
+        webSocketClient = object : WebSocketClient(uri) {
+            override fun onOpen(handshakedata: ServerHandshake?) {
+                Log.d("WebSocket", "Connected to server")
+                // Send user ID after connection is open
+                val chatID = "{\"id\": \"$chatId\"}" // Replace with appropriate user ID
+                send(chatID)
+
+            }
+
+            override fun onMessage(message: String?) {
+                Log.d("WebSocket", "Received: $message")
+                val jSOnString = """$message"""
+                val gson = Gson()
+                val messageData: MessagesItem = gson.fromJson(jSOnString, MessagesItem::class.java)
+
+                // Find the existing ChatsItem with the same chatId to get the chatType
+                val existingChatItem = mList.find { it.chatId == messageData.chatId }
+
+                // If an existing chat item is found, use its chatType
+                val chatType = existingChatItem?.chatType ?: ""
+                val id = existingChatItem?.id ?: ""
+                val participants = existingChatItem?.participants
+                val name = existingChatItem?.name ?: ""
+
+                // Create a new ChatsItem from messageData
+                val newMessage = ChatsItem(
+                    id = id,
+                    chatId = messageData.chatId,
+                    name = name,
+                    lastMessageTime = messageData.sentAt,
+                    lastMessage = messageData.content,
+                    chatType = chatType,
+                    participants = participants!!
+                )
+
+                runOnUiThread {
+                    // Update the list with the new message
+                    val updatedList = mList.map { chatItem ->
+                        if (chatItem.chatId == messageData.chatId) newMessage else chatItem
+                    }.toMutableList()
+
+                    mList.clear()
+                    mList.addAll(updatedList)
+                    adapter.setData(mList)
+                }
+            }
+
+            override fun onClose(code: Int, reason: String?, remote: Boolean) {
+                Log.d("WebSocket", "Connection closed")
+            }
+
+            override fun onError(ex: Exception?) {
+                Log.e("WebSocket", "Error: ${ex?.message}")
+            }
+
+        }
+        webSocketClient.connect()
     }
 
 //    override fun onCreateOptionsMenu(menu: Menu): Boolean {

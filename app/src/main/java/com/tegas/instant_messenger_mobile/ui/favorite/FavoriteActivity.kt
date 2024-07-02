@@ -13,7 +13,7 @@ import com.tegas.instant_messenger_mobile.ui.main.ChatAdapter
 class FavoriteActivity : AppCompatActivity() {
     private lateinit var binding: ActivityFavoriteBinding
     private val adapter by lazy {
-        ChatAdapter {
+        ChatAdapter(this) {
             Intent(this, DetailActivity::class.java).apply {
                 putExtra("item", it)
                 startActivity(this)

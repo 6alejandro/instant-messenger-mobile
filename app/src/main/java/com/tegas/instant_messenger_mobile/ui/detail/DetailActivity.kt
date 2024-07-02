@@ -246,9 +246,14 @@ class DetailActivity : AppCompatActivity() {
                     adapter.addMessage(messageData)
                     adapter.notifyDataSetChanged()
 
+                    runOnUiThread{
+                        adapter.addMessage(messageData)
+                        binding.rvChat.scrollToPosition(adapter.itemCount - 1)
+                    }
+
                     Log.d("ADDMESSAGEEEEEEEEEEE", "MESSAGE REFRESHED BY WEBSOCKET")
                     // Handle incoming messages here
-                    val sender = messageData.senderName
+                    val sender = messageData.senderId
                     val text = messageData.content
                     val chatId = messageData.chatId
 
