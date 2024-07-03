@@ -67,9 +67,19 @@
         app:layout_constraintTop_toBottomOf="@id/tv_sub_login"
         android:layout_marginHorizontal="16dp"/>
 
+    <ImageView
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/lock"
+        app:tint="@color/dark_blue"
+        app:layout_constraintEnd_toStartOf="@id/et_password"
+        app:layout_constraintTop_toTopOf="@id/et_password"
+        android:layout_margin="8dp"
+        app:layout_constraintBottom_toBottomOf="@id/et_password"/>
+
     <EditText
         android:id="@+id/et_password"
-        android:layout_width="match_parent"
+        android:layout_width="300dp"
         android:layout_height="60dp"
         android:layout_marginTop="20dp"
         android:background="@drawable/custom_input"
@@ -79,6 +89,8 @@
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
         android:textSize="14sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/et_nim"
         android:layout_marginHorizontal="16dp"/>
 

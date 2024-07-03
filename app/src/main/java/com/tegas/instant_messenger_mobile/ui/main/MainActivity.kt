@@ -30,6 +30,7 @@ import com.tegas.instant_messenger_mobile.ui.login.LoginActivity
 import de.hdodenhof.circleimageview.CircleImageView
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
+import org.json.JSONObject
 import java.net.URI
 import java.util.Locale
 
@@ -45,7 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvName: TextView
     private lateinit var tvNim: TextView
     private lateinit var webSocketClient: WebSocketClient
-
+    private val chatIds = mutableListOf<String>()
     private val adapter by lazy {
         ChatAdapter(this) {
             Intent(this, DetailActivity::class.java).apply {
@@ -66,7 +67,7 @@ class MainActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.appBarMain.toolBar)
         supportActionBar?.setDisplayHomeAsUpEnabled(false)
-        supportActionBar?.title = ""
+        supportActionBar?.title = "Instant Messenger"
         supportActionBar?.setBackgroundDrawable(ColorDrawable(resources.getColor(R.color.white)))
         val drawerLayout: DrawerLayout = binding.drawerLayout
         val navView: NavigationView = binding.navView
@@ -154,13 +155,51 @@ class MainActivity : AppCompatActivity() {
                     mList.addAll(result.data)
                     adapter.setData(mList)
 
+                    Log.d("RESULT DATA", result.data.size.toString())
                     for (i in result.data) {
-                        setWebSocket(i.chatId)
+                        Log.d("First For", i.chatId)
                         Log.d("I.CHATID", i.chatId)
+                        // Membuat objek JSON
+//                        sendDeliveredReceipt(i.chatId)
+                        chatIds.add(i.chatId)
+                        setWebSocket(i.chatId)
+
                     }
+
+//                    for (i in result.data) {
+//                        Log.d("Second For", i.chatId)
+//                        Log.d("I.CHATID", i.chatId)
+//                        // Membuat objek JSON
+////                        sendDeliveredReceipt(i.chatId)
+//                        chatIds.add(i.chatId)
+////                        setWebSocket(i.chatId)
+//
+//                    }
+
+//                    for (i in chatIds) {
+//                        Log.d("Second For", i)
+//                        sendDeliveredReceipt(i)
+//                    }
+                    Log.d("chatIds", chatIds.toString())
                 }
+
+                else -> {}
             }
         }
+    }
+
+    fun sendDeliveredReceipt(chatId: String) {
+        Log.d("sendDeliveredReceipt", "Triggered")
+        // Membuat objek JSON
+        val readReceipt = JSONObject()
+        readReceipt.put("chatId", chatId)
+        readReceipt.put("delivered", true)
+
+        // Mengirim objek JSON melalui WebSocket atau proses yang sesuai
+        // Contoh:
+        // ws.send(readReceipt.toString()) // Mengirimkan sebagai string JSON
+        Log.d("DELIVEREDDELIVERED", readReceipt.toString())
+        webSocketClient.send(readReceipt.toString())
     }
 
     private fun setupLogout() {
@@ -217,6 +256,14 @@ class MainActivity : AppCompatActivity() {
                 // Send user ID after connection is open
                 val chatID = "{\"id\": \"$chatId\"}" // Replace with appropriate user ID
                 send(chatID)
+
+                for (i in chatIds) {
+                    val deliveredReceipt = JSONObject()
+                    deliveredReceipt.put("chatId", chatId)
+                    deliveredReceipt.put("delivered", true)
+
+                    webSocketClient.send(deliveredReceipt.toString())
+                }
 
             }
 

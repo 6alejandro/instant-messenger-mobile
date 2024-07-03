@@ -245,11 +245,11 @@ class DetailActivity : AppCompatActivity() {
                         gson.fromJson(jSOnString, MessagesItem::class.java)
                     adapter.addMessage(messageData)
                     adapter.notifyDataSetChanged()
-
-                    runOnUiThread{
-                        adapter.addMessage(messageData)
-                        binding.rvChat.scrollToPosition(adapter.itemCount - 1)
-                    }
+//
+//                    runOnUiThread{
+//                        adapter.addMessage(messageData)
+//                        binding.rvChat.scrollToPosition(adapter.itemCount - 1)
+//                    }
 
                     Log.d("ADDMESSAGEEEEEEEEEEE", "MESSAGE REFRESHED BY WEBSOCKET")
                     // Handle incoming messages here
@@ -262,7 +262,11 @@ class DetailActivity : AppCompatActivity() {
                         sendNotification(sender, text, chatId, chatName)
                     }
 
-                } else {
+                } else if (message == chatId){
+                    Log.d("PESAN DITERIMA", message)
+                    adapter.updateMessageStateToDelivered()
+                }
+                else{
                     Log.d("PESAN DIBACA", message)
                     adapter.updateMessageStateToRead()
                 }
@@ -484,7 +488,7 @@ class DetailActivity : AppCompatActivity() {
                         "multipart/form-data".toMediaTypeOrNull(),
                         file.readBytes()
                     )
-                    MultipartBody.Part.createFormData("file", getFileName(it), requestBody)
+                    MultipartBody.Part.createFormData("attachments", getFileName(it), requestBody)
                 }
 
 //                if (selectedFile != null) {

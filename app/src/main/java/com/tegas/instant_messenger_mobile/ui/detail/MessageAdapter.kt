@@ -38,8 +38,18 @@ class MessageAdapter(
     fun updateMessageStateToRead() {
         // Loop through the data and update the icon for all messages sent by the user
         for (message in data) {
-            if (message.senderId == nim) {
-                message.isRead = true // Assuming you have an 'isRead' property in MessagesItem
+            if (message.senderId != nim) {
+                message.state = 3 //
+            }
+        }
+        notifyDataSetChanged()
+    }
+
+    fun updateMessageStateToDelivered() {
+        // Loop through the data and update the icon for all messages sent by the user
+        for (message in data) {
+            if (message.senderId != nim) {
+                message.state = 2
             }
         }
         notifyDataSetChanged()
@@ -139,7 +149,7 @@ class MessageAdapter(
 
                 // Update the drawable based on the read state
                 binding.layoutSent.messageState.setImageResource(
-                    if (item.isRead) R.drawable.double_check else R.drawable.single_check
+                    if (item.state == 1) R.drawable.single_check else if(item.state == 2) R.drawable.black_double else R.drawable.double_check
                 )
             }
         }
